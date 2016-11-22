@@ -1,0 +1,1 @@
+jdk.exe /s ADDLOCAL="ToolsFeature,SourceFeature,PublicjreFeature"

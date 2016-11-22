@@ -1,0 +1,1 @@
+set PYTHONIOENCODING="utf-16-be"

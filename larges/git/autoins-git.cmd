@@ -1,0 +1,1 @@
+Git-1.9.4-preview20140611.exe /SILENT /SAVEINF="git.ini"

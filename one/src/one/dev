@@ -1,0 +1,10 @@
+#!/bin/bash
+# simply redirect to dev-XXX.cmd
+
+dp0="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+if [ -z "$1" ]; then
+  source ${dp0}/dev-help
+else
+  source ${dp0}/dev-${1} ${@:2}
+fi

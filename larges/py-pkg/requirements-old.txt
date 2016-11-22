@@ -1,0 +1,9 @@
+Pyro4==4.30
+pyparsing==2.0.3
+pyreadline==2.0
+python-dateutil==2.2
+pytz==2014.7
+serpent==1.7
+six==1.8.0
+bottle==0.11.6
+waitress==0.8.9

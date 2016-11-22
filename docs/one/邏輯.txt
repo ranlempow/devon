@@ -1,0 +1,105 @@
+## 可以安裝的東西
+
+#### Local APP
+$PRJ_BIN/[app]
+
+#### Tools
+$PRJ_TOOLS/[tool]
+$PRJ_TOOLS/brickv/plugins/[plugin]
+
+#### Plugins Config
+$PRJ_CONF/[plugin]
+$PRJ_CONF/[app]
+$PRJ_CONF/private/[config]
+
+#### Default Config
+.editorconfig
+.gitignore
+
+
+
+## set-env
+設定開發的環境變數與搜尋路徑
+
+/tools/brickv/set-env:                     PATH+=..;/;/config
+- {shell-set-env}
+- {plugin-set-env}
+- {app-set-env}
+
+
+[shell-set-env]
+- [user]/config/brickv/set-env             
+- [parent]/config/brickv/set-env
+- /config/brickv/set-env                   PATH+=/config/brickv/scripts/
+  (在這裡要設定所有資料夾變數$PRJ_XXXX)
+
+[plugin-set-env]
+- /tools/brickv/plugins/[plugin]/set-env:  PATH+=/tools/brickv/plugins/[plugin]
+
+[app-set-env]
+(use /config/brickv/active.txt)
+- /tools/brickv/app/set-env:                iter:app-set-env PATH+=..
+  - /bin/apps/[app]/set-env
+  - [user]/config/[app]/set-env
+  - [parent]/config/[app]/set-env
+  - /config/[app]/set-env                 PATH+=..
+  - /config/private/[app]/set-env
+
+API:
+brickv set-env --shell --plugin --app
+brickv set --config={config}
+brickv set --plugin={plugin}
+brickv set --app={app} X Y
+brickv set --app={app} path Y
+brickv unset --app={app} [X]
+
+
+## init(update)
+把專案資料夾更新為可用的狀態
+這會安裝任何所需要的軟體, 並且進行修補與初始化
+每次git pull之後可能都需要執行這個指令
+
+(use /config/brickv/applist.txt)
+- /config/brickv/update
+- [user]/config/[app]/app-update
+- [parent]/config/[app]/app-update
+- /config/[app]/app-update                 
+
+
+## clear
+把專案資料夾清除為封存狀態, 所有非必要的檔案都被刪除
+最小化成可備份的模式, 如果要重新安裝的話就先clear再update
+/tools/one/clear
+- /tools/one/plugins/[plugin]/clear
+  - /tools/brickv/clear
+- /config/one/clear
+- /config/[app]/clear
+- /config/private/[app]/clear
+
+all - clear - commit = private
+brickv add-clear [path]
+
+## help
+
+[project-help]
+[plugin-help]
+[app-help]
+[tools-help]
+
+
+## shell
+set-env之後的開發環境
+
+## exit
+離開set-env之開發環境
+
+
+## install [plugins]
+這個部分會用python撰寫或是交給brickv處理, 或是交給oh-my-zsh
+安裝其他會改變 set-env update clear shell的東西
+也會改變gitignore
+
+
+## 子專案
+父子專案互為獨立無法互相干涉
+但是子專案將會使用父專案的apps以即tools

@@ -1,0 +1,1 @@
+msiexec /i python-3.4.1.amd64.msi /qn /l*v python.log ALLUSERS=1

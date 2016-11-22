@@ -1,0 +1,72 @@
+[pip]
+virtualenv
+neurolab
+pytz
+pyparsing
+python-dateutil(six)
+dateutil
+pyro4
+bottle
+waitress
+
+[easy_install]
+
+
+[exe]
+numpy-MKL
+matplotlib
+pywin32
+
+env/scripts/activate
+env/scripts/deactivate
+¤U¸üÂI
+http://www.lfd.uci.edu/~gohlke/pythonlibs/#visionegg
+
+
+[other]
+Zipline		Zipline is a Pythonic algorithmic trading library
+pyHook		Python wrapper for global input hooks in Windows.
+autopy		A simple, cross-platform GUI automation toolkit for Python. http://www.autopy.org
+pywinauto	pywinauto is a set of python modules to automate the Microsoft Windows GUI
+Coverage.py	Coverage.py is a tool for measuring code coverage of Python programs
+faulthandler	Display the Python traceback on a crash
+nose		nose extends unittest to make testing easier.
+pycurl		PycURL is a Python interface to libcurl.
+https://github.com/sangeeths/merkle-tree
+http://svn.tribler.org/abc/branches/mainbranch/Tribler/Core/Merkle/merkle.py
+http://stackoverflow.com/questions/5486304/explain-merkle-trees-for-use-in-eventual-consistency
+Hiss	Gossip Protocol on top of Twisted
+https://github.com/teepark/btree
+
+[d3]
+mpld3	D3 Renderings of Matplotlib Graphics http://mpld3.github.io
+bokeh	Interactive Web Plotting for Python
+
+[data]
+pandas	Python Data Analysis Library
+Skulpt 	Skulpt is an entirely in-browser implementation of Python.
+python-cjson
+ujson 
+Rtree	Spatial indexing for Python
+BTrees	Scalable persistent object containers
+APSW	APSW provides an SQLite 3 wrapper that provides the thinnest layer over the SQLite database library possible. 
+blist	a list-like type with better asymptotic performance and similar performance on small lists
+bsdiff4	binary diff and patch using the BSDIFF4-format
+la	Label the rows, columns, any dimension, of your NumPy arrays.
+PyTables	PyTables is a package for managing hierarchical datasets and designed to efficiently and easily cope with extremely large amounts of data
+Plyvel	Plyvel is a fast and feature-rich Python interface to LevelDB.
+
+[sci]
+PyMix	The Python Mixture Package (PyMix) is a freely available Python library implementing algorithms and data structures for a wide variety of data mining applications with basic and extended mixture models. Features 
+TA-Lib	Technical Analysis Library
+Theano	Theano is a Python library that allows you to define, optimize, and evaluate mathematical expressions involving multi-dimensional arrays efficiently
+mdp-toolkit	Modular toolkit for Data Processing
+Milk	Machine Learning Toolkit for Python
+NiTime	Nitime is a library for time-series analysis of data from neuroscience experiments.
+NLopt	NLopt is a free/open-source library for nonlinear optimization
+numexpr	Fast numerical array expression evaluator for Python, NumPy, PyTables, pandas, bcolz and more
+patsy	A Python package for describing statistical models
+PuLP	PuLP is an LP(Linear programming) modeler written in python
+PyMC	PyMC is a python module for Bayesian statistical modeling and model fitting which focuses on advanced Markov chain Monte Carlo fitting algorithms
+iminuit	Interactive IPython Friendly Mimizer based on SEAL Minuit
+DecisionTree 2.2.4

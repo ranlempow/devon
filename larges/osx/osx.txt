@@ -1,0 +1,6 @@
+https://github.com/Homebrew/homebrew
+The missing package manager for OS X. http://brew.sh
+
+https://github.com/clibs/clib
+C package manager-ish
+brew install clib

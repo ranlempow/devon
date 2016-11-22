@@ -1,0 +1,37 @@
+http://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/luna/SR2/eclipse-java-luna-SR2-win32-x86_64.zip
+
+C:\Users\ran\Desktop\eclipse-java-luna-SR2-win32\eclipse\eclipse 
+-nosplash 
+-application org.eclipse.equinox.p2.director 
+-repository http://download.eclipse.org/releases/indigo/,http://cmakeed.sourceforge.net/eclipse/ 
+-installIU | -uninstallIU com.cthing.cmakeed.feature.feature.group
+
+https://dl-ssl.google.com/android/eclipse/
+com.android.ide.eclipse.adt.feature.feature.group
+
+http://download.eclipse.org/buildship/updates/e45/releases/1.0
+http://download.eclipse.org/buildship/updates/e44/releases/1.0
+org.eclipse.buildship.feature.group
+
+
+workspace\.metadata\.plugins\org.eclipse.core.runtime\.settings\org.eclipse.ui.workbench.prefs
+workspace\.metadata\.plugins\org.eclipse.core.runtime\.settings\org.eclipse.jdt.ui.prefs
+org.eclipse.jface.textfont=1|Consolas|9.75|0|WINDOWS|1|-13|0|0|0|400|0|0|0|0|3|2|1|49|Consolas;
+
+workspace\.metadata\.plugins\org.eclipse.core.runtime\.settings\org.eclipse.core.resources.prefs
+encoding=UTF-8
+
+workspace\.metadata\.plugins\org.eclipse.core.runtime\.settings\org.eclipse.ui.ide.prefs
+SHOW_LOCATION=true
+
+workspace\.metadata\.plugins\org.eclipse.core.runtime\.settings\com.android.ide.eclipse.adt.prefs
+com.android.ide.eclipse.adt.sdk=C\:\\Users\\ran\\Desktop\\big_depend\\android_sdk\\android-sdk-windows
+
+eclipse\configuration\.settings\org.eclipse.ui.ide.prefs
+RECENT_WORKSPACES=
+SHOW_WORKSPACE_SELECTION_DIALOG=false
+
+
+eclipse\eclipse.ini
+-vm
+..\big_depend\make_jdk_portable\jdk-8u73-windows-x64\jdk_dir\bin\javaw.exe

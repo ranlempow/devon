@@ -1,0 +1,16 @@
+JDK is not available as a portable zip unfortunately. However, you can follow these steps:
+  Create working JDK directory (C:\JDK in this case)
+  Download latest version of JDK from Oracle (for example jdk-7u7-windows-x64.exe)
+  Download and install 7-Zip (or download 7-Zip portable version if you are not administrator)
+  With 7-Zip extract all the files from jdk-XuXX-windows-x64.exe into the directory C:\JDK
+  Execute the following commands in cmd.exe:
+    cd C:\JDK\.rsrc\JAVA_CAB10
+    extrac32 111
+
+  Unpack C:\JDK\.rsrc\JAVA_CAB10\tools.zip with 7-zip
+  Execute the following commands in cmd.exe: 
+    cd C:\JDK\.rsrc\JAVA_CAB10\tools\
+    for /r %x in (*.pack) do .\bin\unpack200 -r "%x" "%~dx%~px%~nx.jar" (this will convert all .pack files into .jar files)
+
+  Copy all contents of C:\JDK\.rsrc\JAVA_CAB10\tools where you want your JDK to be
+  Setup JAVA_HOME and PATH manually to point to your JDK dir and its BIN subdirectory.

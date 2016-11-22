@@ -1,0 +1,5 @@
+#!/bin/bash
+
+dp0="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source ${dp0}/base.sh
+cat ${ONE_CONFIG_BASE}/help.txt

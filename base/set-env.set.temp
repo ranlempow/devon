@@ -1,0 +1,5 @@
+
+
+:SetEnv
+@if not "%VA_${APPNAME}_BASE%" == "" @call %VA_${APPNAME}_BASE%\set-env.cmd --clear
+@set VA_${APPNAME}_BASE=%SCRIPT_SOURCE%

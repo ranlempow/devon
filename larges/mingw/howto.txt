@@ -1,0 +1,10 @@
+download mingw-get
+https://sourceforge.net/projects/mingw/files/Installer/mingw-get/mingw-get-0.6.2-beta-20131004-1/mingw-get-0.6.2-mingw32-beta-20131004-1-bin.zip/download
+
+unpack to /mingw
+
+> /mingw/bin/mingw-get install mingw msys
+
+copy mingw32-make.exe -> make.exe
+add rm.exe
+
