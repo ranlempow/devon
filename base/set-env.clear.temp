@@ -1,5 +1,0 @@
-
-
-:ClearEnv
-@if not "%VA_${APPNAME}_BASE%" == "%SCRIPT_SOURCE%" @goto :eof
-@set BA_${APPNAME}_BASE=
