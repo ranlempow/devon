@@ -1,19 +1,22 @@
 
-@set _devsh=%~f0
+rem SCRIPT_SOURCE
+rem SCRIPT_FOLDER
 
-::: function Main(cmd=shell, args=...)
+::: function Main(cmd=shell,
+                  args=...)
 @set _devcmd=%cmd%
 @set _devargs=%args%
 @set cmd=
 @set args=
 @call :ExcuteCommand
-rem @set _devsh=
 ::: endfunc
 
 #include("spilt-string.cmd")
 #include("parseini.cmd")
 #include("project-paths.cmd")
 
+::: inline(VAR)
+::: endinline
 
 ::: function BasicCheck()
     if not "%~d0" == "C:" (
@@ -26,26 +29,6 @@ rem @set _devsh=
         error("folder path contains illegal characters")
     )
 ::: endfunc
-
-
-::: function ExcuteCommand() delayedexpansion
-    :: 如果還沒進入shell則先進入臨時性的shell
-    call :ActiveDevShell
-    call :CMD_%_devcmd% %_devargs%
-
-    rem if "%DEVSH_ACTIVATE%" == "" (
-    rem     call :CMD_shell %_devcmd% %_devargs%
-    rem ) else (
-    rem     call :CMD_%_devcmd% %_devargs%
-    rem )
-
-::: endfunc
-
-
-
-::: inline(VAR)
-::: endinline
-
 
 
 :ActiveDevShell
@@ -63,6 +46,7 @@ rem add paths from config[path]
 call :GetIniArray DEVONE_CONFIG_PATH "path"
 set PATH=!inival!;!PATH!
 
+if "%HOME%" == "" set HOME=PRJ_ROOT/.home
 set PROMPT=$C!TITLE!$F$S$P$G
 
 rem prepare temporary command stub folder
@@ -77,13 +61,13 @@ call :GetIniArray DEVONE_CONFIG_PATH "dotfiles"
 (set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
 goto :SubString
 :call_dotfile
-    if exist !substring!.cmd call call !substring!.cmd
+    if exist "!substring!.cmd" call call "!substring!.cmd"
     goto :NextSubString
 :exit_call_dotfile
 set inival=
 
-if exist %PRJ_CONF%\hooks\set-env.cmd (
-    call %PRJ_CONF%\hooks\set-env.cmd
+if exist "%PRJ_CONF%\hooks\set-env.cmd" (
+    call "%PRJ_CONF%\hooks\set-env.cmd"
 )
 
 
@@ -103,83 +87,83 @@ set alias=
 set alias_cmd=
 set inival=
 
-echo.@"%_devsh%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
+echo.@"%SCRIPT_SOURCE%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
 
 set DEVSH_ACTIVATE=1
 goto :eof
 
 
-::: function CMD_shell(cmd=, no_window=N, args=...) delayedexpansion
 
+
+::: function ExcuteCommand() delayedexpansion
+    :: 如果還沒進入shell則先進入臨時性的shell
+    call :ActiveDevShell
+    call :CMD_%_devcmd% %_devargs%
+::: endfunc
+
+
+
+::: function CMD_shell(no_window=N, no_welcom=N, args=...) delayedexpansion
     rem create new shell window
     set CMDSCRIPT=
+    set CMDSCRIPT=!CMDSCRIPT!(set cmd_args=)^&(set cmd_executable=)^&(set command=)^&(set CMDSCRIPT=)^&
 
     rem create welcome text
-    if not "%cmd%" == "" goto :no_welcome_text
+    if "%no_welcom%" == "1" goto :no_welcome_text
     set welcome1=Devone v1.0.0 [project !TITLE!]
-    set CMDSCRIPT=!CMDSCRIPT!(echo !welcome1!)^&
+    set CMDSCRIPT=!CMDSCRIPT!(echo.!welcome1!)^&
     set welcome1=
     call :GetIniValue DEVONE_CONFIG_PATH "help" "*"
-    if not "!inival!" == "" set CMDSCRIPT=!CMDSCRIPT!(echo !inival!)^&
+    if not "!inival!" == "" set CMDSCRIPT=!CMDSCRIPT!(echo.!inival!)^&
     set inival=
     :no_welcome_text
 
-    set CMDSCRIPT=!CMDSCRIPT!(set cmd_args=)^&(set cmd_executable=)^&(set cmd=)^&(set command=)^&(set CMDSCRIPT=)^&
+    rem force setup for newly cloned project
+    rem set CMDSCRIPT=!CMDSCRIPT!(dev setup)^&
 
+    rem ansicon feature
     where ansicon.exe 2> nul
-    if %errorlevel% == 0 (
+    if not errorlevel 1 (
         set cmd_executable=ansicon.exe %ComSpec%
     ) else (
         set cmd_executable=%ComSpec%
     )
 
-    if "%cmd%" == "" (
-        set cmd_args=/K "!CMDSCRIPT!"
-    ) else (
-        set CMDSCRIPT=!CMDSCRIPT!"%_devsh%" --cmd %cmd%
-        set cmd_args=/C "!CMDSCRIPT!"
+    rem clink feature
+    where clink.bat 2> nul
+    if errorlevel  0 (
+        set CMDSCRIPT=!CMDSCRIPT!clink.bat inject
     )
-    pushd %PRJ_ROOT%
 
-    rem TODO: no_window
-    if "%no_window%" == "1" (
-        %cmd_executable% %cmd_args%
-    ) else (
-        echo on
+    set cmd_args=/K "!CMDSCRIPT!"
+    pushd %PRJ_ROOT%
+    echo on
+    @if "%no_window%" == "1" @(
+        @%cmd_executable% %cmd_args%
+    ) else @(
         @start "[%TITLE%]" %cmd_executable% %cmd_args%
-        @echo off
     )
+    @echo off
     popd
 ::: endfunc
 
+#include("CMD_setup.cmd")
+#include("CMD_sync.cmd")
+#include("CMD_update.cmd")
+#include("CMD_clear.cmd")
 
 ::: function CMD_exec()
-::: endfunc
 
-
-
-::: function CMD_update()
-
-if exist %PRJ_CONF%\hooks\update.cmd (
-    call %PRJ_CONF%\hooks\update.cmd
-)
-::: endfunc
-
-::: function CMD_clear()
-
-if exist %PRJ_CONF%\hooks\clear.cmd (
-    call %PRJ_CONF%\hooks\clear.cmd
-)
-::: endfunc
-
-::: function CMD_sync()
-::: endfunc
-
-::: function CMD_setup()
 ::: endfunc
 
 
 ::: function CMD_help()
+
+echo.  dev clear      for backup or clean re-install
+echo.  dev update     update development environment
+echo.  dev setup      configure git for first using
+echo.  dev sync       keep project sync through git
+
 ::: endfunc
 
 
