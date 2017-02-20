@@ -1,6 +1,6 @@
 @REM SETUPS記得要加引號, 要不然會解析錯誤
 @REM @set APPNAME=%~1
-@REM @set MATCH_VER=%~2
+@REM @set APPVER=%~2
 
 ::: function BrickvGenEnv(TARGET, SETUPS=) delayedexpansion
 
@@ -8,11 +8,11 @@ call :GenEnvInlines
 
 set SETENV_TARGET=%TARGET%\set-env.cmd
 
-set APPNAME=app1
-set MATCH_VER=1.0
+rem set APPNAME=app1
+rem set APPVER=1.0
 
 if "%APPNAME%" == "" error("APPNAME undefined")
-if "%MATCH_VER%" == "" error("MATCH_VER undefined")
+if "%APPVER%" == "" error("APPVER undefined")
 
 echo.> %SETENV_TARGET%
 @REM 讀取樣板並取代 APPNAME, 建立腳本檔
@@ -26,10 +26,10 @@ call :WriteScript SetEnvClearTemplate
 call :WriteSetup clear-env
 echo @goto :eof>> "%SETENV_TARGET%"
 
-@REM vaildate
-call :WriteScript SetEnvVaildateTemplate
+@REM validate
+call :WriteScript SetEnvValidateTemplate
 
-if not "!%APPNAME%_Vaildate!" == "" call WriteText "!%APPNAME%_Vaildate!" "%TEMP%\code" --append
+if not "!%APPNAME%_Validate!" == "" call WriteText "!%APPNAME%_Validate!" "%TEMP%\code" --append
 echo @goto :eof>> "%SETENV_TARGET%"
 
 @REM patchmoved
@@ -49,7 +49,7 @@ call :WriteScript SetEnvEndTemplate
 
 rem TODO: 移到更高層的地方
 rem @if not "%NOCHECK%" == "1" if exist "%VAILDATE_SCRIPT%" @(
-rem     @call "%VA_HOME%\base\vaildate.cmd" "%VAILDATE_SCRIPT%"
+rem     @call "%VA_HOME%\base\validate.cmd" "%VAILDATE_SCRIPT%"
 rem )
 
 ::: endfunc
@@ -69,7 +69,16 @@ if "%Append%" == "1" (
 
 ::: function WriteScript(VarName)
 call :WriteText %VarName% "%TEMP%\%VarName%"
-powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_ -replace '\${APPNAME}', '%APPNAME%'.ToUpper() -replace '\${AppNameSmall}', '%APPNAME%' -replace '\${AppVersion}', '%MATCH_VER%' } | Add-Content '%SETENV_TARGET%'"
+powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_^\n^
+ -replace '\${APPNAME}', '%APPNAME%'.ToUpper()^\n^
+ -replace '\${AppNameSmall}', '%APPNAME%'^\n^
+ -replace '\${AppVersion}', '%APPVER%'^\n^
+ -replace '\${CheckExist}', '%CHECK_EXIST%'^\n^
+ -replace '\${CheckCmd}', '%CHECK_CMD%'^\n^
+ -replace '\${CheckLineword}', '%CHECK_LINEWORD%'^\n^
+ -replace '\${CheckOk}', '%CHECK_OK%'^\n^
+ -replace '\${CheckScript}', '%CHECK_SCRIPT%'^\n^
+} | Add-Content '%SETENV_TARGET%'"
 ::: endfunc
 
 
@@ -149,20 +158,31 @@ powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_ -rep
 :GenEnvInlines
 
 ::: inline(SetEnvBeginTemplate)
+
+@if not "%SCRIPT_SOURCE%" == "" set _OLD_SCRIPT_SOURCE=%SCRIPT_SOURCE%
+@if not "%SETENV_PATH%" == "" set _OLD_SETENV_PATH=%SETENV_PATH%
+@if not "%QUIET%" == "" set _OLD_QUIET=%QUIET%
+@if not "%VA_INFO_APPNAME%" == "" set _OLD_VA_INFO_APPNAME=%VA_INFO_APPNAME%
+@if not "%VA_INFO_VERSION%" == "" set _OLD_VA_INFO_VERSION=%VA_INFO_VERSION%
+
 @set SCRIPT_SOURCE=%~dp0
 @if "%SCRIPT_SOURCE:~-1%"=="\" @set SCRIPT_SOURCE=%SCRIPT_SOURCE:~0,-1%
 @set SETENV_PATH=%~0
 
-@if "%2" == "--quiet" @set QUIET=1
-@if "%1" == "--info" @call :GetInfo
-@if "%1" == "" @call :SetEnv
-@if "%1" == "--set" @call :SetEnv
-@if "%1" == "--clear" @call :ClearEnv
-@if "%1" == "--check" @call :Vaildate
-@if "%1" == "--vaildate" @call :Vaildate
-@if "%1" == "--before-move" @call :BeforeMove
-@if "%1" == "--after-move" @call :AfterMove
-@goto :Quit
+@if "%~2" == "--quiet" @set QUIET=1
+@if "%~1" == "--info" @call :GetInfo
+@if "%~1" == "" @call :SetEnv
+@if "%~1" == "--set" @call :SetEnv
+@if "%~1" == "--clear" @call :ClearEnv
+@if "%~1" == "--check" @call :Validate
+@if "%~1" == "--validate" @call :Validate
+@if "%~1" == "--before-move" @call :BeforeMove
+@if "%~1" == "--after-move" @call :AfterMove
+
+@if "%~1" == "--info" @goto :QuitInfo
+@if not "%~1" == "--validate" @if not "%~1" == "--check" @goto :Quit
+@goto :eof
+
 
 :GetInfo
 @if "%2" == "appname" @(
@@ -189,26 +209,33 @@ powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_ -rep
 ::: inline(SetEnvClearTemplate)
 :ClearEnv
 @if not "%VA_${APPNAME}_BASE%" == "%SCRIPT_SOURCE%" @goto :eof
-@set BA_${APPNAME}_BASE=
+@set VA_${APPNAME}_BASE=
 ::: endinline
 
-::: inline(SetEnvVaildateTemplate)
-:VaildateFailed
+::: inline(SetEnvValidateTemplate)
+
+:ValidateFailed
+@set FAILED=1
 @if not "%QUIET%" == "1" @echo "failed"
-@endlocal
-@cmd /C exit /b 1
 @goto :eof
+@rem TODO: use `@goto :Quit` for self test'
+@rem TODO: use `@call :ClearEnv` for self test
 
-:VaildateSuccess
+:ValidateSuccess
 @if not "%QUIET%" == "1" @echo "ok"
-@endlocal
-@cmd /C exit /b 0
 @goto :eof
+@rem TODO: use `@goto :Quit` for self test
+@rem TODO: use `@call :ClearEnv` for self test
 
-:Vaildate
-@setlocal
+:Validate
 @call :GetInfo
 @call :SetEnv
+@set CHECK_EXIST=${CheckExist}
+@set CHECK_CMD=${CheckCmd}
+@set CHECK_LINEWORD=${CheckLineword}
+@set CHECK_OK=${CheckOk}
+${CheckScript}
+@goto ValidateSuccess
 ::: endinline
 
 
@@ -219,7 +246,18 @@ powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_ -rep
 
 ::: inline(SetEnvEndTemplate)
 :Quit
-@set SCRIPT_SOURCE=
-@set SETENV_PATH=
-:::
+@set CHECK_EXIST=
+@set CHECK_CMD=
+@set CHECK_LINEWORD=
+@set CHECK_OK=
+@set VA_INFO_APPNAME=%_OLD_VA_INFO_APPNAME%
+@set VA_INFO_VERSION=%_OLD_VA_INFO_VERSION%
+:QuitInfo
+@set SCRIPT_SOURCE=%_OLD_SCRIPT_SOURCE%
+@set SETENV_PATH=%_OLD_SETENV_PATH%
+@set QUIET=%_OLD_QUIET%
+@if "%FAILED%" == "1" (@set FAILED=) & (@cmd /C exit /b 1) & (@goto :eof)
+@cmd /C exit /b 0
+::: endinline
+
 goto :eof

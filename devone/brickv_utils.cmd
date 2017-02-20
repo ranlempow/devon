@@ -61,84 +61,91 @@
     move "%SRC%" "%DST%" > nul
     if errorlevel 1 error("An error occurred when move %SRC% to %DST%")
 
-    call :PrintMsg debug message move "%SRC% %DST%"
+    call :PrintMsg debug move "%SRC% %DST%"
 ::: endfunc
 
 
+::: function FilenameFromUrl(Url)
+for /f %%i in ("%Url%") do set Filename=%%~nxi
+for /f "delims=?" %%a in ("%Filename%") do set Filename=%%a
+for /f "delims=#" %%a in ("%Filename%") do set Filename=%%a
+return %Filename%
+::: endfunc
+
 
 ::: function BrickvBeforeInstall()
-    @rem require: REQUEST_*, APPNAME, APPVER, INSTALLER
-    @rem output: TARGETDIR, REAL_TARGET, BACK_TARGET, NAME
-    rem @if not "%ERROR_MSG%" == "" @goto :Error
-
+    @rem require: REQUEST_*, APPNAME, APPVER
+    @rem output: TARGETDIR, REAL_TARGET, BACK_TARGET, TARGET_NAME
 
     if "%APPVER%" == "" set APPVER=%MATCH_VER%
-    if "%REQUEST_NAME%" == "" set REQUEST_NAME=%APPNAME%-%APPVER%
+    set TARGET_NAME=%APPNAME%-%APPVER%
 
-    if not "%TARGET%" == "" call :NormalizePath "%TARGET%\.."
-    if not "%TARGET%" == "" set TARGETDIR=%Normalized%
+    if not "%REQUEST_NAME%" == "" set TARGET_NAME=%REQUEST_NAME%
 
     if not "%REQUEST_TARGETDIR%" == "" set TARGETDIR=%REQUEST_TARGETDIR%
     if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "global" set TARGETDIR=%LOCALAPPDATA%\brickv\apps
     if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "local" set TARGETDIR=%PRJ_BIN%
+    rem echo TARGET_NAME:%TARGET_NAME%
+    rem echo TARGETDIR:%TARGETDIR%
+    rem echo REQUEST_LOCATION:%REQUEST_LOCATION%
 
-    if "%TARGET%" == "" if not "%TARGETDIR%" == "" set TARGET=%TARGETDIR%\%REQUEST_NAME%
-
-    if "%TARGET%" == "" error("TARGET not specific")
+    if not "%TARGET%" == "" for /f %%i in ("%TARGET%\..") do set TARGETDIR=%%~fi
+    if not "%TARGET%" == "" for /f %%i in ("%TARGET%") do set TARGET_NAME=%%~ni
     if "%TARGETDIR%" == "" error("TARGETDIR not specific")
 
 
-    set TARGETDIR=%REQUEST_TARGETDIR%
-    @if "%REQUEST_NAME%" == "" @(
-        @set NAME=%APPNAME%-%APPVER%
-    ) else @(
-        @set NAME=%REQUEST_NAME%
-    )
-
-    call :PrintTaskInfo
-
-    set REAL_TARGET=%TARGETDIR%\%NAME%
+    set TARGET=%TARGETDIR%\%TARGET_NAME%
+    set REAL_TARGET=%TARGET%
     set BACK_TARGET=%TARGETDIR%\backupfor-%APPNAME%
-    if not "%DRYRUN%" == "1" (
-        if exist "%REAL_TARGET%" call :MoveFile "%REAL_TARGET%" "%BACK_TARGET%"
-    )
-    return %TARGETDIR%, %REAL_TARGET%, %BACK_TARGET%, %NAME%
+    set FAIL_TARGET=%TARGETDIR%\failed-%APPNAME%
+    if "%DRYRUN%" == "1" goto :BrickvBeforeInstall_retrun
+
+    if not exist "%TARGETDIR%" mkdir "%TARGETDIR%"
+    if exist "%BACK_TARGET%" rd /Q /S "%BACK_TARGET%"
+    if not exist "%REAL_TARGET%" goto :BrickvBeforeInstall_retrun
+    move "%REAL_TARGET%" "%BACK_TARGET%" > nul
+    if errorlevel 1 error("%REAL_TARGET% can not move")
+
+:BrickvBeforeInstall_retrun
+    return %TARGET%, %TARGETDIR%, %TARGET_NAME%, %REAL_TARGET%, %BACK_TARGET%, %FAIL_TARGET%
 ::: endfunc
 
 
 
 ::: function BrickvDone()
-    @rem require: REAL_TARGET, BACK_TARGET, APPNAME, MATCH_VER
+    rem require: REAL_TARGET, BACK_TARGET, APPNAME, MATCH_VER
 
-    @if not "%ERROR_MSG%" == "" @(
-        @if not "%DRYRUN%" == "1" @(
+    if not "%_ERROR_MSG%" == "" (
+        if not "%DRYRUN%" == "1" (
             rem rollback
-            if exist "%REAL_TARGET%" rd /Q /S "%REAL_TARGET%"
-            if exist "%BACK_TARGET%" move "%BACK_TARGET%" "%REAL_TARGET%" > null
-            rem @goto :Error
+            if exist "%FAIL_TARGET%" rd /Q /S "%FAIL_TARGET%"
+            if exist "%REAL_TARGET%" move "%REAL_TARGET%" "%FAIL_TARGET%"
+            if exist "%BACK_TARGET%" move "%BACK_TARGET%" "%REAL_TARGET%" > nul
         )
-    ) else @(
-        @REM commit
-        @if exist "%BACK_TARGET%" @rd /Q /S "%BACK_TARGET%"
+        pcall :PrintMsg error error "%_ERROR_MSG%"
+        return
+    ) else (
+        rem commit
+        if exist "%BACK_TARGET%" rd /Q /S "%BACK_TARGET%"
     )
 
-    if "%DRYRUN%" == "1" @(
-        call :PrintMsg normal message skip "%APPNAME%@%MATCH_VER% at %REAL_TARGET%"
-    ) else @(
-        call :PrintMsg normal message installed "%APPNAME%@%MATCH_VER% at %REAL_TARGET%"
+    if "%DRYRUN%" == "1" (
+        call :PrintMsg normal skip %APPNAME%@%MATCH_VER% at %REAL_TARGET%
+    ) else (
+        call :PrintMsg normal installed %APPNAME%@%MATCH_VER% at %REAL_TARGET%
     )
 ::: endfunc
 
 
 
-::: function BrickvVaildate()
+::: function BrickvValidate()
     set VAILDATE=1
     if "%SETENV_TARGET%" == "" error("SETENV_TARGET undefined")
     if not exist "%SETENV_TARGET%" error("%SETENV_TARGET% not exist")
     call "%SETENV_TARGET%" --info
     if not "%VA_INFO_APPNAME%" == "%APPNAME%" error("the demand application is %APPNAME%, but %VA_INFO_APPNAME% installed")
-    call "%SETENV_TARGET%" --vaildate --quiet
-    if errorlevel 1 error("%VA_INFO_APPNAME% vaildate failed")
+    call "%SETENV_TARGET%" --validate --quiet
+    if errorlevel 1 error("%VA_INFO_APPNAME% validate failed")
 ::: endfunc
 
 
