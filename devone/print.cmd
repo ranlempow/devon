@@ -54,11 +54,11 @@ rem Test Ok
     set MSG_TITLE=task
     call :PreparePrint "%PRINT_LEVEL%" "%MSG_TITLE%"
 
-    set OUTPUT=%THISNAME% %BR%%MSG_TITLE_F%%NN% target:     %TARGETDIR%
+    set OUTPUT=%THISNAME% %BR%%MSG_TITLE_F%%NN% targetdir:  %TARGETDIR%
     call :_Print
-    set OUTPUT=                      name:       %NAME%
+    set OUTPUT=                       name:       %TARGET_NAME%
     call :_Print
-    set OUTPUT=                      installer:  %INSTALLER%
+    set OUTPUT=                       installer:  %INSTALLER%
     call :_Print
 ::: endfunc
 

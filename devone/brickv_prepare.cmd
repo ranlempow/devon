@@ -11,7 +11,6 @@ rem TODO: Need test
                            REST_ARGS_PRINT=....)
 
 @rem == init setting variables ==
-set VERSION_SPCES_FILE=%TEMP%\version_spces.txt
 set REQUEST_SPEC=%spec%
 set REQUEST_APP=%app%
 set REQUEST_VER=%ver%
@@ -34,12 +33,15 @@ if "%system%" == "1" set REQUEST_LOCATION=system
 if "%global%" == "1" set REQUEST_LOCATION=global
 if "%local%" == "1" set REQUEST_LOCATION=local
 
+set LOCAL_DIR=%LOCALAPPDATA%\Programs
+set GLOBAL_DIR=%PRJ_BIN%
+
 
 @REM 安裝的目錄名稱
 set REQUEST_NAME=%name%
 @REM 安裝的父目錄所在地
 set REQUEST_TARGETDIR=%targetdir%
-@if "%REQUEST_LOCATION%" == "global" @if "%REQUEST_TARGETDIR%" == "" @set REQUEST_TARGETDIR=%LOCALAPPDATA%\Programs
+rem @if "%REQUEST_LOCATION%" == "global" @if "%REQUEST_TARGETDIR%" == "" @set REQUEST_TARGETDIR=%LOCALAPPDATA%\Programs
 
 
 @rem 不真正下載與執行, 只顯示相關參數
@@ -98,7 +100,12 @@ if not "%REQUEST_SPEC%" == "" (
 set REQUEST_SPEC=%REQUEST_APP%=%REQUEST_VER%@%REQUEST_ARCH%[%REQUEST_PATCHES%]
 
 call :PrintVersion info request "%REQUEST_APP%" "%REQUEST_VER%" "%REQUEST_ARCH%" "%REQUEST_PATCHES%"
-return %VERSION_SPCES_FILE%, %DRYRUN%, %FORCE%, %CHECKONLY%, %NOCHECK%, %NO_COLOR%, %LOG_LEVEL%,     %REQUEST_SPEC%, %REQUEST_APP%, %REQUEST_MAJOR%, %REQUEST_MINOR%, %REQUEST_PATCH%, %REQUEST_ARCH%, %REQUEST_PATCHES%, %REQUEST_VER%
+return %DRYRUN%, %FORCE%, %CHECKONLY%, %NOCHECK%, %NO_COLOR%, %LOG_LEVEL%, ^\n^
+       %VERSION_SPCES_FILE%, %LOCAL_DIR%, %GLOBAL_DIR%, ^\n^
+       %REQUEST_SPEC%, %REQUEST_APP%, ^\n^
+       %REQUEST_MAJOR%, %REQUEST_MINOR%, %REQUEST_PATCH%, ^\n^
+       %REQUEST_ARCH%, %REQUEST_PATCHES%, %REQUEST_VER%, ^\n^
+       %REQUEST_LOCATION%, %REQUEST_NAME%, %REQUEST_TARGETDIR%
 
 ::: endfunc
 

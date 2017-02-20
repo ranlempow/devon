@@ -2,7 +2,7 @@ rem Test Ok
 
 :ImportColor
 if not "%NN%" == "" goto :eof
-if not "%NO_COLOR%" == "" goto :eof
+if "%NO_COLOR%" == "1" goto :eof
 if "%TEST_SHELL%" == "1" goto :eof
 
 for /F "skip=1 delims=" %%F in ('

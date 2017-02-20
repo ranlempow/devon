@@ -21,7 +21,7 @@ if errorlevel 1 set err=1
 if exist "%ErrorFile%" set /P dl_error= < "%ErrorFile%"
 if "%err%" == "1" error("download %Url% is failed: %dl_error%")
 
-call :PrintMsg info write $output
+call :PrintMsg info write %Output%
 
 ::: endfunc
 
