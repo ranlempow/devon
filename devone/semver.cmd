@@ -58,21 +58,21 @@ return
 :ToEnv
 rm "%TEMP%\matched_versions.txt" 2>nul
 1>"%TEMP%\matched_versions.txt" PowerShell -Command "%PSScriptText%;!SemverScriptText:"=!"
-for /F "tokens=1-6 usebackq" %%A IN ("%TEMP%\matched_versions.txt") do (
+for /F "tokens=1-7 usebackq" %%A IN ("%TEMP%\matched_versions.txt") do (
     set MATCH_APP=%%A
     set MATCH_MAJOR=%%B
     set MATCH_MINOR=%%C
     set MATCH_PATCH=%%D
     set MATCH_ARCH=%%E
     set MATCH_PATCHES=%%F
+    set MATCH_CARRY=%%~G
 )
-
 set MATCH_VER=%MATCH_MAJOR%
 if not "%MATCH_MINOR%" == "x" if not "%MATCH_MINOR%" == "" set MATCH_VER=%MATCH_VER%.%MATCH_MINOR%
 if not "%MATCH_PATCH%" == "x" if not "%MATCH_PATCH%" == "" set MATCH_VER=%MATCH_VER%.%MATCH_PATCH%
 if "%MATCH_VER%" == "" error("request version %spec_match% not found")
 call :PrintVersion info match "%MATCH_APP%" "%MATCH_VER%" "%MATCH_ARCH%" "%MATCH_PATCHES%"
-return %MATCH_APP%, %MATCH_VER%, %MATCH_MAJOR%, %MATCH_MINOR%, %MATCH_PATCH%, %MATCH_ARCH%, %MATCH_PATCHES%
+return %MATCH_APP%, %MATCH_VER%, %MATCH_MAJOR%, %MATCH_MINOR%, %MATCH_PATCH%, %MATCH_ARCH%, %MATCH_PATCHES%, %MATCH_CARRY%
 
 ::: endfunc
 
