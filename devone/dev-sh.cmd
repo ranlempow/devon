@@ -2,6 +2,12 @@
 rem SCRIPT_SOURCE
 rem SCRIPT_FOLDER
 
+@call :Main %*
+@if not "%SetEnvFile%" == "" @call "%SetEnvFile%" --set
+@set SetEnvFile=
+@goto :eof
+
+
 ::: function Main(cmd=shell,
                   args=...)
 @set _devcmd=%cmd%
@@ -9,6 +15,7 @@ rem SCRIPT_FOLDER
 @set cmd=
 @set args=
 @call :ExcuteCommand
+return %SetEnvFile%
 ::: endfunc
 
 #include("spilt-string.cmd")
@@ -43,7 +50,7 @@ rem add PRJ_BIN, PRJ_TOOLS to path
 set PATH=!PRJ_BIN!;!PRJ_TOOLS!;!PATH!
 
 rem add paths from config[path]
-call :GetIniArray DEVONE_CONFIG_PATH "path"
+call :GetIniArray %DEVONE_CONFIG_PATH% "path"
 set PATH=!inival!;!PATH!
 
 if "%HOME%" == "" set HOME=PRJ_ROOT/.home
@@ -57,7 +64,7 @@ set PATH=!PRJ_TMP!\command;!PATH!
 rem set-env
 rem TODO: 注意相對路徑之間的問題
 set inival=
-call :GetIniArray DEVONE_CONFIG_PATH "dotfiles"
+call :GetIniArray %DEVONE_CONFIG_PATH% "dotfiles"
 (set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
 goto :SubString
 :call_dotfile
@@ -72,15 +79,16 @@ if exist "%PRJ_CONF%\hooks\set-env.cmd" (
 
 
 rem create temporary command stub
-call :GetIniArray DEVONE_CONFIG_PATH "alias"
+call :GetIniPairs %DEVONE_CONFIG_PATH% "alias"
 (set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
 goto :SubString
 :create_alias_file
+    echo !substring!
     for /f "tokens=1,2 delims==" %%a in ("!substring!") do (
         set alias=%%a
         set alias_cmd=%%b
     )
-    echo.@%alias_cmd% > %PRJ_TMP%\command\%alias%.cmd
+    echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command\%alias%.cmd
     goto :NextSubString
 :exit_create_alias_file
 set alias=
@@ -88,6 +96,16 @@ set alias_cmd=
 set inival=
 
 echo.@"%SCRIPT_SOURCE%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
+
+
+set GitShellScript=#^^!/usr/bin/env bash^
+
+"C:\\Program Files (x86)\\Git\\bin\\sh.exe" --login -i
+
+echo.!GitShellScript! > %PRJ_TMP%\command\git-shell
+
+#include(GitHooksScript, "git-hooks")
+echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
 
 set DEVSH_ACTIVATE=1
 goto :eof
@@ -99,9 +117,20 @@ goto :eof
     :: 如果還沒進入shell則先進入臨時性的shell
     call :ActiveDevShell
     call :CMD_%_devcmd% %_devargs%
+    return %SetEnvFile%
 ::: endfunc
 
+rem ::: function ExcuteBrickvCommand() delayedexpansion
+rem     :: 如果還沒進入shell則先進入臨時性的shell
+rem     call :ActiveDevShell
+rem     call :brickv_CMD_%_devcmd% %_devargs%
+rem ::: endfunc
 
+::: function CMD_brickv(brickv_cmd, brickv_args=...)
+    call :ActiveDevShell
+    call :brickv_CMD_%brickv_cmd% %brickv_args%
+    return %SetEnvFile%
+::: endfunc
 
 ::: function CMD_shell(no_window=N, no_welcom=N, args=...) delayedexpansion
     rem create new shell window
@@ -113,7 +142,7 @@ goto :eof
     set welcome1=Devone v1.0.0 [project !TITLE!]
     set CMDSCRIPT=!CMDSCRIPT!(echo.!welcome1!)^&
     set welcome1=
-    call :GetIniValue DEVONE_CONFIG_PATH "help" "*"
+    call :GetIniValue %DEVONE_CONFIG_PATH% "help" "*"
     if not "!inival!" == "" set CMDSCRIPT=!CMDSCRIPT!(echo.!inival!)^&
     set inival=
     :no_welcome_text
@@ -131,7 +160,7 @@ goto :eof
 
     rem clink feature
     where clink.bat 2> nul
-    if errorlevel  0 (
+    if not errorlevel 1 (
         set CMDSCRIPT=!CMDSCRIPT!clink.bat inject
     )
 
@@ -151,6 +180,9 @@ goto :eof
 #include("CMD_sync.cmd")
 #include("CMD_update.cmd")
 #include("CMD_clear.cmd")
+
+#include("brickv_CMD_install.cmd")
+#include("brickv_CMD_list.cmd")
 
 ::: function CMD_exec()
 
