@@ -1,25 +1,33 @@
+[-$get-args]
 
-
-
-[-$parse-args]
-
-$versions URL REGEX
+$versions(URL, REGEX)
+    download version file and parser it
 [-$fetchver]
+
 [-$semver]
 
-$require SPEC
-$require SPEC --runtime
+
+$require(SPEC, runtime=N)
+    set requirement of this app
+
 [-$resolve]
 
+
 $appver VERNAME
-$installer URL FILENAME
+$installer(URL, FILENAME, MSI=N)
+    set installer file name and its parent url
+
 [-$before-install]
 [-$auto-install]
 
 -$download
+    download file
 -$movepath
+    move file
 -$unzip
+    unzip file
 -$msi-execute
+    msi file
 
 $env-set VAR=VALUE
 $env-path PATH
@@ -32,6 +40,7 @@ $check --bin PATH
 [-$search-apps]
 [-$list-apps]
 -$print
+    print message
 
 目前只有gradle是完成度高的
 其他的請參考gradle的格式來完成
@@ -45,7 +54,7 @@ install [<app-list>] [<options>] [<app-list>] [<options>]
   -a, --all               Install all the apps listed in profile
   --switch
   --save
-  
+
 uninstall                 simply remove
   -a, --all               Uninstall all the apps listed in profile
   -y, --yes               Don't confirmation
@@ -101,7 +110,7 @@ application
 -------------
 install - install app
 check - check if installed porperly
-test - test app functional 
+test - test app functional
 
 
 configure or setup
@@ -110,8 +119,3 @@ PATH
 .env
 cmd.cmd(activate.bat)
 
-
-C:\ProgramData\Oracle\Java\javapath;
-C:\Python34\;
-C:\Python34\Scripts;
-(X?)%M2%;

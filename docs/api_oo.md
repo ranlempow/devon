@@ -6,70 +6,88 @@
 #### entry init()
 調整基本環境變數
 
-	return: $APPNAME, $ACCEPT
-	not-implement: 猜測合理變數
+    not-implement: 猜測合理變數(這個一定要實作)
 
 #### entry detect()
-檢查環境是否符合
+檢查環境是否符合(暫不實作)
 
-	return: Error
-	not-implement: 假設合理環境
+    in: $REQUIRE_*
+    out: $ACCEPT_*
+    return-option: $ACCEPT
+    not-implement: 假設合理環境, 使用$ACCEPT_*做檢查
 
 #### entry versions()
 取得版本列表
-	
-	optional: $RELEASE_URL
-	return: ./versions-file
-	not-implement: 直接指定版本
+
+    out : $RELEASE_URL 下載此檔作為versions-file
+    return: RELEASE_LIST | versions-file 版本列表
+
+    not-implement: 直接指定版本
 
 #### entry prepare()
 準備安裝所需資訊, 產生依賴表
 
-	return: 環境變數, temp, ./depends-file
-	not-implement: 無額外依賴
+    in: $MATCH_*
+    out: $DEPENDS_URL
+    out: $DOWNLOAD_URL_TEMPLATE
+    return: $DEPENDS_LIST | depends-file 依賴表
+    return: $DOWNLOAD_URL  主檔案下載位址
+    return: $TARGET
+    not-implement: 無額外依賴
 
 #### entry download()
 準備安裝所需檔案
 
-	optional: $DOWNLOAD_URL
-	return: ./<downloads>
-	not-implement: 下載檔案$DOWNLOAD_URL
+    in: $DOWNLOAD_URL
+    in: $DOWNLOAD_FILE
+    out: $DOWNLOAD_URL
+    return: -> $DOWNLOAD_FILE
+    not-implement: 下載檔案$DOWNLOAD_URL -> $DOWNLOAD_FILE
 
 #### entry unpack()
 實際安裝
 
-	optional: $INSTALLER
-	return: 
-	not-implement: 用預設方式安裝$INSTALLER
+    in: -> $DOWNLOAD_FILE
+    in: $REAL_TARGETDIR
+    in: $TARGET
+    out: $UNPACK_METHOD
+    out: $INSTALLER
+    return: -> TARGET
+    out/return: $SETENV
+    not-implement: 用預設方式安裝$INSTALLER
 
 #### entry validate()
 驗正app安裝成功, 功能正常
 
-	not-implement: 無額外驗證功能, 僅檢查資料夾是否存在
+    out: $CHECK_CMD=gradle -v
+    out: $CHECK_LINEWORD=Gradle
+    out: $CHECK_OK=Gradle %VA_INFO_VERSION%
+    return: $VALIDATE_PASS
+    not-implement: 無額外驗證功能, 僅檢查資料夾是否存在
 
 #### entry remove()
 刪除app需要做的事情
 
-	not-implement: 直接刪除資料夾
+    not-implement: 直接刪除資料夾
 
 #### entry setenv()
 
-	not-implement: none
+    not-implement: none
 
 #### entry clearenv()
 
-	not-implement: 刪除setenv所設定的物件
+    not-implement: 刪除setenv所設定的物件
 
 
 #### entry beforemove()
 移動之前要做的事情
 
-	not-implement: none
+    not-implement: none
 
 #### entry aftermove()
 移動之後要做的事情
 
-	not-implement: none
+    not-implement: none
 
 
 
@@ -85,40 +103,40 @@
 
 
 #### App Creation Command
-| name			| process
+| name          | process
 |-----------------------
-| info			| init
-| versions		| init, versions
+| info          | init
+| versions      | init, versions
 | depends(dryrun)| init, versions, prepare
-| download		| [dependency], download
-| install		| [dependency], download, unpack, aftermove, [test]
+| download      | [dependency], download
+| install       | [dependency], download, unpack, aftermove, [test]
 
 #### App Manipulation Process
-| name			| process
+| name          | process
 |-----------------------
-| uninstall		| init, beforemove, remove, [delete]
-| upgrade		| [install], [uninstall]
-| test			| init, setenv, validate
-| select		| init, [deselect other], setenv
-| deselect		| init, clearenv
-| move			| init, beforemove, [copy], aftermove, setenv, validate
+| uninstall     | init, beforemove, remove, [delete]
+| upgrade       | [install], [uninstall]
+| test          | init, setenv, validate
+| select        | init, [deselect other], setenv
+| deselect      | init, clearenv
+| move          | init, beforemove, [copy], aftermove, setenv, validate
 
 #### App Function Process(no argument)
-| name			| process
+| name          | process
 |-----------------------
-| uninstall		| search-app, [uninstall]
-| upgrade		| search-app, [upgrade]
-| select		| search-app, [select]
-| deselect		| list-app
+| uninstall     | search-app, [uninstall]
+| upgrade       | search-app, [upgrade]
+| select        | search-app, [select]
+| deselect      | list-app
 
 #### General Management Process
-| name			| process
+| name          | process
 |-----------------------
-| list			| search-app, [info]
-| status		| list-app, [test], [depends]
-| update(all)	| read-spec, [upgrade]
-| cache			|
-| scope(namesps)| 
+| list          | search-app, [info]
+| status        | list-app, [test], [depends]
+| update(all)   | read-spec, [upgrade]
+| cache         |
+| scope(namesps)|
 
 ## Arguments Of Command
 
@@ -139,7 +157,7 @@ General Options:
   --log-file              The Logging file with detail
 ```
 
-App Common options: 
+App Common options:
 ```
   -S, --save              Package will appear in your dependencies
   -D, --save-dev          Package will appear in your devDependencies

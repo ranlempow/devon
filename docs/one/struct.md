@@ -4,14 +4,17 @@
 |-----------------------
 | $PRJ_ROOT     | /              | - | - | -
 | $PRJ_BIN      | /bin           |   | O | O
-| $PRJ_TOOLS    | /tools         | O | O | 
-| $PRJ_CONF     | /config        | O |   | 
-| $PRJ_VAR      | /var           | A | ? | O
+| $PRJ_VAR      | /var           |   | ? | O
+| $PRJ_LOG      | $PRJ_VAR/log   |   | O | -
+| $PRJ_TMP      | $PRJ_VAR/tmp   |   | O | -
+| $PRJ_TOOLS    | /tools         |   | O |
+| $PRJ_SRC      | /src           | O |   |
+| $PRJ_CONF     | /config        | ? |   |
+| $PRJ_SCRIPT   | /config        |   |   |
 | $PRJ_EXT      | /external      |   | O | submodule
-| $PRJ_SRC      | /src           | O |   | 
-| $PRJ_TEST     | /test          |   |   | 
-| $PRJ_DOCS     | /docs          |   | ? | 
-| $PRJ_LOG      | $PRJ_VAR/log   |   | O | O
+| $PRJ_TEST     | /test          |   |   |
+| $PRJ_DOCS     | /docs          |   | ? |
+
 
 
 ## $PRJ_ROOT
@@ -19,6 +22,7 @@
 [editor]: .sublime-project
 [proj]: project.json
 [ci]: .travis.yml
+[qa]: tox.ini
 .editorconfig
 .gitignore
 .gitattributes
@@ -31,7 +35,7 @@ LICENSE
 
 ## $PRJ_BIN
 `/bin`
-X not-readonly(開發人員修改此處檔案)
+X writable(開發人員修改此處檔案)
 X git(提交到版本控制)
 可執行程式, 通常是二進位檔
 或是一些快取的放置處
@@ -40,7 +44,7 @@ X git(提交到版本控制)
 
 ## $PRJ_TOOLS
 `/tools` `/utils`
-X not-readonly(開發人員修改此處檔案)
+X writable(開發人員修改此處檔案)
 O git(提交到版本控制)
 可執行程式, 通常是腳本
 `/tools/brickv` - 控制apps的程式
@@ -50,7 +54,7 @@ O git(提交到版本控制)
 
 ## $PRJ_CONF
 `/config` `/scripts`
-O not-readonly(開發人員修改此處檔案)
+O writable(開發人員修改此處檔案)
 O git(提交到版本控制)
 bin或tools的設定檔, 或是一些腳本檔, 會被提交到版本控制
 `/config/[app]`
@@ -59,7 +63,7 @@ bin或tools的設定檔, 或是一些腳本檔, 會被提交到版本控制
 
 ## <build>
 `/build` `/config/build` `/scripts/build`
-O not-readonly(開發人員修改此處檔案)
+O writable(開發人員修改此處檔案)
 O git(提交到版本控制)
 建造用的腳本
 
@@ -79,8 +83,8 @@ O git(提交到版本控制)
 
 
 ## $PRJ_VAR
-`/var` `/stage` `/objs` 
-X not-readonly(開發人員修改此處檔案)
+`/var` `/stage` `/objs`
+X writable(開發人員修改此處檔案)
 X git(提交到版本控制)
 建造過程的中間產物
 或是因為測試而產生的產物
@@ -90,26 +94,26 @@ X git(提交到版本控制)
 
 ## <dist>
 /dist /artifacts
-X not-readonly(開發人員修改此處檔案)
+X writable(開發人員修改此處檔案)
 X git(提交到版本控制)
 編譯後的最終檔案
 
 
 ## $PRJ_EXT
 `/external` `/thirdparty` `/libs` `/apps/lib`
-X not-readonly(開發人員修改此處檔案)
+X writable(開發人員修改此處檔案)
 O git(提交到版本控制)
 外部檔案
 
 
 ## $PRJ_TEST
-`/test` `/tests`
+`/test` `/tests` `src/test`
 非屬原始碼一部分的測試
 
 
 ## $PRJ_LOG
 `/log` `/var/log`
-X not-readonly(開發人員修改此處檔案)
+X writable(開發人員修改此處檔案)
 X git(提交到版本控制)
 記錄檔的存放區
 

@@ -1,8 +1,18 @@
+Generalized Software development kit
+通用化軟體開發套件
+
 ## 目標
 Cloudize: Synchronize development environment between different co-worker.
-Polyglot: Make diversified programmer style co-exist without conflict. 
+Polyglot: Make diversified programmer style co-exist without conflict.
 Multi-Project: Drive many projects at the same time and same machine.
 Bootstrap: Provide Fastest development environment setup.
+
+## 架構
+1. bash環境, cmd環境(windows)
+2. git整合
+3. brickv解決大型依賴
+4. 專案資料夾結構與專案設定檔
+5. 各種的hook和plugin架構
 
 ## 手段
 simplify development environment, and isolate projects.
