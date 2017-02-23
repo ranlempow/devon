@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+pre_path=$(sed -r 's|:\/c\/__dev_setpath:|&#|' <<< "${PATH}")
+IFS=# read -r -a array <<< "${pre_path}"
+addition_path=${array[0]}
+origin_path=${array[1]}
+if [ ! -z "${origin_path}" ]; then
+    pre_path=$(sed -r 's|:\/c\/__dev_endpath:|&#|' <<< "${addition_path}")
+    IFS=# read -r -a array <<< "${pre_path}"
+    bash_path=${array[0]}
+    devone_path=${array[1]}
+    if [ ! -z "${origin_path}" ]; then
+        PATH=${devone_path}${bash_path}${origin_path}
+    fi
+fi

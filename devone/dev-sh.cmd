@@ -101,6 +101,8 @@ if exist "%PRJ_CONF%\hooks\set-env.cmd" (
     call "%PRJ_CONF%\hooks\set-env.cmd"
 )
 
+rem end set PATH
+set PATH=C:\__dev_endpath;%PATH%
 
 rem create temporary command stub
 call :GetIniPairs %DEVONE_CONFIG_PATH% "alias"
@@ -128,73 +130,86 @@ set GitShellScript=#^^!/usr/bin/env bash^
 
 echo.!GitShellScript! > %PRJ_TMP%\command\git-shell
 
-#include(GitHooksScript, "git-hooks")
-echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
 
-set DEVSH_ACTIVATE=1
-goto :eof
+::: function GenerateCommandStubs()
+    rem create temporary command stub
+    call :GetIniPairs %DEVONE_CONFIG_PATH% "alias"
+    (set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
+    goto :SubString
+    :create_alias_file
+        echo !substring!
+        for /f "tokens=1,2 delims==" %%a in ("!substring!") do (
+            set alias=%%a
+            set alias_cmd=%%b
+        )
+        echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command\%alias%.cmd
+        goto :NextSubString
+    :exit_create_alias_file
+    set inival=
+
+    echo.@"%SCRIPT_SOURCE%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
 
 
+    #include(GitHooksScript, "git-hooks")
+    echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
 
+    #include(SSHScript, "ssh")
+    echo.!SSHScript! > %PRJ_TMP%\command\ssh
+    echo.!SSHScript! > %PRJ_TMP%\command\scp
 
-::: function ExcuteCommand() delayedexpansion
-    :: 如果還沒進入shell則先進入臨時性的shell
-    call :ActiveDevShell
-    call :CMD_%_devcmd% %_devargs%
-    return %SetEnvFile%
+    #include(GitBashScript, "bash.cmd")
+    echo.!GitBashScript! > %PRJ_TMP%\command\bash.cmd
+    echo.!GitBashScript! > %PRJ_TMP%\command\git-bash.cmd
+    rem echo.@bash -c ssh %* > %PRJ_TMP%\command\ssh.cmd
+    rem echo.@bash -c scp %* > %PRJ_TMP%\command\scp.cmd
+
+    #include(BashProfileScript, "bash_profile")
+    echo.!BashProfileScript! > %HOMEPATH%\.bashrc
+
 ::: endfunc
 
-rem ::: function ExcuteBrickvCommand() delayedexpansion
-rem     :: 如果還沒進入shell則先進入臨時性的shell
-rem     call :ActiveDevShell
-rem     call :brickv_CMD_%_devcmd% %_devargs%
-rem ::: endfunc
-
-::: function CMD_brickv(brickv_cmd, brickv_args=...)
-    call :ActiveDevShell
-    call :brickv_CMD_%brickv_cmd% %brickv_args%
-    return %SetEnvFile%
-::: endfunc
-
-::: function CMD_shell(no_window=N, no_welcom=N, args=...) delayedexpansion
+::: function CMD_shell(no_window=N, no_welcom=N) delayedexpansion
     rem create new shell window
     set CMDSCRIPT=
-    set CMDSCRIPT=!CMDSCRIPT!(set cmd_args=)^&(set cmd_executable=)^&(set command=)^&(set CMDSCRIPT=)^&
-
-    rem create welcome text
-    if "%no_welcom%" == "1" goto :no_welcome_text
-    set welcome1=Devone v1.0.0 [project !TITLE!]
-    set CMDSCRIPT=!CMDSCRIPT!(echo.!welcome1!)^&
-    set welcome1=
-    call :GetIniValue %DEVONE_CONFIG_PATH% "help" "*"
-    if not "!inival!" == "" set CMDSCRIPT=!CMDSCRIPT!(echo.!inival!)^&
-    set inival=
-    :no_welcome_text
+    set CMDSCRIPT=!CMDSCRIPT!^\n^
+        (set no_window=)^&^\n^
+        (set no_welcom=)^&^\n^
+        (set CMDSCRIPT=)^&^\n^
+        (set CALL_STACK=)^&^\n^
+        (set SCRIPT_FOLDER=)^&^\n^
+        (set SCRIPT_SOURCE=)^&^\n^
+        (set DEVONE_VERSION=)^&^\n^
+        (set _devcmd=)^&^\n^
+        (set _devargs=)^&
 
     rem force setup for newly cloned project
     rem set CMDSCRIPT=!CMDSCRIPT!(dev setup)^&
 
     rem ansicon feature
-    where ansicon.exe 2> nul
+    where ansicon.exe 2>&1 1>nul
     if not errorlevel 1 (
-        set cmd_executable=ansicon.exe %ComSpec%
-    ) else (
-        set cmd_executable=%ComSpec%
+        set "CMDSCRIPT=!CMDSCRIPT!(ansicon.exe -p)^&"
     )
 
     rem clink feature
-    where clink.bat 2> nul
+    where clink.bat 2>&1 1>nul
     if not errorlevel 1 (
-        set CMDSCRIPT=!CMDSCRIPT!clink.bat inject
+        set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject)^&"
     )
 
-    set cmd_args=/K "!CMDSCRIPT!"
+    rem show welcome text and change prompt
+    if not "%no_welcom%" == "1" (
+        set "CMDSCRIPT=!CMDSCRIPT!(dev welcome)^&"
+    )
+    rem finish cmd script
+    set "CMDSCRIPT=!CMDSCRIPT!(call)"
+
     pushd %PRJ_ROOT%
     echo on
     @if "%no_window%" == "1" @(
-        @%cmd_executable% %cmd_args%
+        @%ComSpec% /K "!CMDSCRIPT!"
     ) else @(
-        @start "[%TITLE%]" %cmd_executable% %cmd_args%
+        @start "[%TITLE%]" %ComSpec% /K "!CMDSCRIPT!"
     )
     @echo off
     popd

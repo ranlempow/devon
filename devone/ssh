@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+prefix_args=()
+suffix_args=()
+userhost=
+while test ${#} -gt 0
+do
+    arg=$1
+    if [[ ${arg} == -* ]]; then
+        arg=${arg#-}
+        if [[ "1246AaCfgKkMNnqsTtVvXxYy" == *${arg}* ]]; then
+            prefix_args+=("-${arg}")
+            shift
+        else
+            prefix_args+=("-${arg}")
+            prefix_args+=("$2")
+            shift
+            shift
+        fi
+    else
+        userhost=$1
+        shift
+        while test ${#} -gt 0
+        do
+            suffix_args+=("$1")
+            shift
+        done
+    fi
+done
+
+# try to find the username
+IFS='@' read -r -a array <<< "${userhost}"
+user=${array[0]}
+host=${array[1]}
+if [ "${user}" == "git" ]; then
+    # github arguments: git@github.com git-receive-pack 'ranlempow/git-hooks.git'
+    IFS='/' read -r -a array <<< "${suffix_args[@]: -1}"
+    user=${array[0]}
+    len=${#suffix_args[@]}
+    suffix_args[${len} - 1]="'${suffix_args[${len} - 1]}'"
+fi
+
+# find the real ssh/scp executable
+program=$(basename "$0")
+if [ "${program}" == ssh ]; then
+    program=ssh
+elif [ "${program}" == scp ]; then
+    program=scp
+else
+    echo unknown program ${program}
+    exit 1
+fi
+
+for _ssh_exec in $(type -ap ${program}); do
+    if [ ${_ssh_exec} -ef $0 ]; then continue; fi
+    ssh_exec=${_ssh_exec}
+done
+if [ -z ${ssh_exec} ]; then
+    echo ssh executable ${ssh_exec} not found
+    exit 1
+fi
+
+# find the key file on the disk
+keypath=~/.ssh/namedkeys/${user}_rsa
+keypath="$(cd "$(dirname "${keypath}")"; pwd)/$(basename "${keypath}")"
+
+# echo ${prefix_args[@]}
+# echo ${user}
+# echo ${host}
+# echo ${suffix_args[@]}
+# echo ${ssh_exec}
+# echo ${keypath}
+
+if [ -f ${keypath} ]; then
+    ${ssh_exec} -i "${keypath}" ${prefix_args[@]} ${userhost} ${suffix_args[@]}
+else
+    ${ssh_exec} ${prefix_args[@]} ${userhost} ${suffix_args[@]}
+fi
