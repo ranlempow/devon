@@ -120,7 +120,7 @@ function SelectVersion {
     if ($output) {
         $specsOutput | Set-Content -path $output
     } else {
-        $specsOutput
+        Write-Host $specsOutput
     }
 }
 
