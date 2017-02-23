@@ -198,7 +198,7 @@ def gen_function(parser, block, match):
         if len(param) == 1:
             # fixed
             output.append('set {}=%~1'.format(param[0]))
-            output.append('if "%1" == ""' + parser.error_str('Need argument {}'.format(param[0]), blockname=funcname))
+            output.append('if "%{}%" == ""'.format(param[0]) + parser.error_str('Need argument {}'.format(param[0]), blockname=funcname))
             output.append('shift')
         elif param[1] == '':
             # optional
