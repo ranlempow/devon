@@ -11,7 +11,7 @@ if errorlevel 1 error("Not a git repository")
 
 for /f %%i in ('git rev-parse --git-dir') do set GitDir=%%i
 rem already setup
-if exist "%GitDir%/.devone" (
+if exist "%GitDir%/.devon" (
     return
 )
 
@@ -49,7 +49,7 @@ git config --local core.autocrlf true
 git config --local push.default simple
 
 git hooks --install
-echo. > "%GitDir%/.devone"
+echo. > "%GitDir%/.devon"
 
 ::: endfunc
 

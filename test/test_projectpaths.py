@@ -16,9 +16,9 @@ class Test(ScriptTestCase):
                 'PRJ_ROOT': testdir,
                 'PRJ_BIN':  testdir + '\\bin',
                 'PRJ_CONF': testdir + '\\config',
-                'PRJ_LOG':  'C:\\Users\\ran\\AppData\\Local\\Temp\\devone-LoadConfigPaths_nofile\\log',
-                'PRJ_TMP':  'C:\\Users\\ran\\AppData\\Local\\Temp\\devone-LoadConfigPaths_nofile\\tmp',
-                'PRJ_VAR':  'C:\\Users\\ran\\AppData\\Local\\Temp\\devone-LoadConfigPaths_nofile'
+                'PRJ_LOG':  'C:\\Users\\ran\\AppData\\Local\\Temp\\devon-LoadConfigPaths_nofile\\log',
+                'PRJ_TMP':  'C:\\Users\\ran\\AppData\\Local\\Temp\\devon-LoadConfigPaths_nofile\\tmp',
+                'PRJ_VAR':  'C:\\Users\\ran\\AppData\\Local\\Temp\\devon-LoadConfigPaths_nofile'
             })
 
     def test_LoadConfigPaths_hasdir(self):
@@ -37,7 +37,7 @@ class Test(ScriptTestCase):
 
     def test_LoadConfigPaths_basic(self):
         testdir, script = self.subscript('LoadConfigPaths_basic')
-        inifile = os.path.join(testdir, 'devone.ini')
+        inifile = os.path.join(testdir, 'devon.ini')
         with open(inifile, 'w', encoding='utf-8') as fp:
             fp.write('''
 [layout]
@@ -46,7 +46,7 @@ var=t_var
             ''')
         script.call('LoadConfigPaths', []).assertResult(
             self, added={
-                'DEVONE_CONFIG_PATH': testdir + '\\devone.ini',
+                'DEVON_CONFIG_PATH': testdir + '\\devon.ini',
                 'PRJ_ROOT': testdir,
                 'PRJ_BIN':  testdir + '\\t_bin',
                 'PRJ_CONF': testdir,

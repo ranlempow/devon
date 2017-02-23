@@ -6,7 +6,7 @@
 @rem if the execution is interrupted or exited, it run POST_SCIRPT to clean up
 @rem POST_SCIRPT is also use to return variable to environment
 @if not "%~1" == "_start_" (
-    set POST_SCIRPT=%TEMP%\devone_post_script-%RANDOM%.cmd
+    set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
     set POST_ERRORLEVEL=0
 )
 @if not "%~1" == "_start_" (
@@ -38,7 +38,7 @@ set _devargs=%args%
 set _start_=
 set cmd=
 set args=
-set DEVONE_VERSION=1.0.0
+set DEVON_VERSION=1.0.0
 
 rem 如果還沒進入shell則先進入臨時性的shell
 call :ActiveDevShell
@@ -79,7 +79,7 @@ if exist "%PRJ_TOOLS%" set PATH=%PRJ_TOOLS%;%PATH%
 if exist "%PRJ_CONF%" set PATH=%PRJ_CONF%;%PATH%
 
 rem add paths from config[path]
-call :GetIniArray %DEVONE_CONFIG_PATH% "path"
+call :GetIniArray %DEVON_CONFIG_PATH% "path"
 call set inival=%inival%
 set PATH=%inival%;%PATH%
 
@@ -92,7 +92,7 @@ set PATH=%PRJ_TMP%\command;%PATH%
 rem set-env
 rem TODO: 注意相對路徑之間的問題
 set inival=
-call :GetIniArray %DEVONE_CONFIG_PATH% "dotfiles"
+call :GetIniArray %DEVON_CONFIG_PATH% "dotfiles"
 (set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
 goto :SubString
 :call_dotfile
@@ -120,20 +120,20 @@ goto :eof
 
 ::: function CMD_welcome()
     if not "%ANSICON%" == "" call :ImportColor
-    echo %BW%Devone%NN% v%DEVONE_VERSION% [project %DC%%TITLE%%NN%]
-    call :GetIniValue %DEVONE_CONFIG_PATH% "help" "*"
+    echo %BW%Devone%NN% v%DEVON_VERSION% [project %DC%%TITLE%%NN%]
+    call :GetIniValue %DEVON_CONFIG_PATH% "help" "*"
     if not "%inival%" == "" call echo %inival%
     echo.@set PROMPT=$C%DC%!TITLE!%NN%$F$S$P$G > "%POST_SCIRPT%"
 ::: endfunc
 
 ::: function CMD_version()
-    echo v%DEVONE_VERSION%
+    echo v%DEVON_VERSION%
 ::: endfunc
 
 
 ::: function GenerateCommandStubs()
     rem create temporary command stub
-    call :GetIniPairs %DEVONE_CONFIG_PATH% "alias"
+    call :GetIniPairs %DEVON_CONFIG_PATH% "alias"
     (set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
     goto :SubString
     :create_alias_file
@@ -178,7 +178,7 @@ goto :eof
         (set CALL_STACK=)^&^\n^
         (set SCRIPT_FOLDER=)^&^\n^
         (set SCRIPT_SOURCE=)^&^\n^
-        (set DEVONE_VERSION=)^&^\n^
+        (set DEVON_VERSION=)^&^\n^
         (set _devcmd=)^&^\n^
         (set _devargs=)^&
 

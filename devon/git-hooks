@@ -152,9 +152,9 @@ function install_hooks
             return 1
         fi
     cmd='#!/usr/bin/env bash
-if [ -f "$(git rev-parse --git-dir)/.devone" ]; then
+if [ -f "$(git rev-parse --git-dir)/.devon" ]; then
 if [ -z "${PRJ_ROOT}" ]; then
-    echo "Error, your in devone project, but not use dev-shell"
+    echo "Error, your in devon project, but not use dev-sh"
     exit 1
 fi
 fi
@@ -170,7 +170,7 @@ git-hooks run "$0" "$@"';
     fi
 }
 
-function install_global 
+function install_global
 {
     TEMPLATE="$HOME/.git-template-with-git-hooks"
     if [ ! -d "${TEMPLATE}" ] ; then
@@ -189,12 +189,12 @@ echo \"git hooks not installed in this repository.  Run 'git hooks --install' to
     echo "Git global config init.templatedir is now set to ${TEMPLATE}"
 }
 
-function uninstall_global 
+function uninstall_global
 {
     git config --global --unset init.templatedir
 }
 
-function report_error 
+function report_error
 {
     echo "Hook failed: $last_run_hook"
     exit 1

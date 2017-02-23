@@ -28,7 +28,7 @@
 
 
 ::: function LoadConfigPaths()
-    :: 尋找並讀取devone.ini設定檔, 此檔案可以放在PRJ_ROOT或是PRJ_ROOT/config
+    :: 尋找並讀取devon.ini設定檔, 此檔案可以放在PRJ_ROOT或是PRJ_ROOT/config
     :: 不論此設定檔存在與否, 均會回傳以下路徑設定
     :: PRJ_BIN, PRJ_VAR, PRJ_LOG, PRJ_TMP, PRJ_CONF
 
@@ -38,32 +38,32 @@
     rem load config
     rem -----------
 
-    rem find config file `devone.ini`
+    rem find config file `devon.ini`
     set CONFIG_PATH=
     pushd %PRJ_ROOT%
     pushd config 2>nul
     if not errorlevel 1 (
-        if exist "devone.ini" set CONFIG_PATH=%cd%
+        if exist "devon.ini" set CONFIG_PATH=%cd%
         popd
     )
-    if exist "devone.ini" set CONFIG_PATH=%cd%
+    if exist "devon.ini" set CONFIG_PATH=%cd%
     popd
-    if not "%CONFIG_PATH%" == "" set DEVONE_CONFIG_PATH=%CONFIG_PATH%\devone.ini
+    if not "%CONFIG_PATH%" == "" set DEVON_CONFIG_PATH=%CONFIG_PATH%\devon.ini
 
 
     @rem builtin config
     @rem --------------
 
 
-    call :GetIniValue %CONFIG_PATH%\devone.ini layout bin
+    call :GetIniValue %CONFIG_PATH%\devon.ini layout bin
     set PRJ_BIN_RAW=%inival%
-    call :GetIniValue %CONFIG_PATH%\devone.ini layout var
+    call :GetIniValue %CONFIG_PATH%\devon.ini layout var
     set PRJ_VAR_RAW=%inival%
-    call :GetIniValue %CONFIG_PATH%\devone.ini layout log
+    call :GetIniValue %CONFIG_PATH%\devon.ini layout log
     set PRJ_LOG_RAW=%inival%
-    call :GetIniValue %CONFIG_PATH%\devone.ini layout tmp
+    call :GetIniValue %CONFIG_PATH%\devon.ini layout tmp
     set PRJ_TMP_RAW=%inival%
-    call :GetIniValue %CONFIG_PATH%\devone.ini layout config
+    call :GetIniValue %CONFIG_PATH%\devon.ini layout config
     set PRJ_CONF_RAW=%inival%
 
     if "%PRJ_BIN_RAW%" == "" if exist "%PRJ_ROOT%\bin" set PRJ_BIN_RAW=bin
@@ -83,7 +83,7 @@
     set PRJ_BIN=%PRJ_ROOT%\%PRJ_BIN_RAW%
     if "%PRJ_VAR_RAW%" == "" (
         rem if not specify, use the system temp folder
-        set PRJ_VAR=%TEMP%\devone-%TITLE%
+        set PRJ_VAR=%TEMP%\devon-%TITLE%
     ) else (
         set PRJ_VAR=%PRJ_ROOT%\%PRJ_VAR_RAW%
     )
@@ -100,7 +100,7 @@
         set PRJ_TMP=%PRJ_ROOT%\%PRJ_TMP_RAW%
     )
     if "%PRJ_CONF_RAW%" == "" (
-        rem if not specify, use the folder which is store devone.ini
+        rem if not specify, use the folder which is store devon.ini
         if not "%CONFIG_PATH%" == "" set PRJ_CONF=%CONFIG_PATH%
     ) else (
         set PRJ_CONF=%PRJ_ROOT%\%PRJ_CONF_RAW%
@@ -108,5 +108,5 @@
     if "%PRJ_CONF%" == "" set PRJ_CONF=%PRJ_ROOT%\config
 
 
-    return DEVONE_CONFIG_PATH, PRJ_ROOT, PRJ_BIN, PRJ_VAR, PRJ_LOG, PRJ_TMP, PRJ_CONF
+    return DEVON_CONFIG_PATH, PRJ_ROOT, PRJ_BIN, PRJ_VAR, PRJ_LOG, PRJ_TMP, PRJ_CONF
 ::: endfunc

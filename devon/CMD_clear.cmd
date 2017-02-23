@@ -15,9 +15,9 @@ rem if exist "%PRJ_LOG%" del /Q "%PRJ_LOG%\*"
 rem if exist "%PRJ_TMP%" del /Q "%PRJ_TMP%\*"
 rem if exist "%PRJ_VAR%" del /Q "%PRJ_VAR%\*"
 
-rem clear from devone.ini[clear]
+rem clear from devon.ini[clear]
 set inival=
-call :GetIniArray DEVONE_CONFIG_PATH "clear"
+call :GetIniArray DEVON_CONFIG_PATH "clear"
 (set Text=!inival!)&(set LoopCb=:clear_prject)&(set ExitCb=:exit_clear_prject)&(set Spliter=;)
 goto :SubString
 :clear_prject

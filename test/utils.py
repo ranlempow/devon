@@ -4,7 +4,7 @@ import shutil
 import unittest
 
 BRICKV_ROOT = os.path.abspath(os.path.join(__file__, '..', '..'))
-SRC_DIR = 'devone'
+SRC_DIR = 'devon'
 TEST_DIR = 'var'
 sys.path.insert(0, BRICKV_ROOT)
 
