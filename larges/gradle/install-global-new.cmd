@@ -2,6 +2,7 @@
 @set DOWNLOAD_URL=%RELEASE_URL%
 @set ACCEPT=local global
 
+
 :versions
 	%VA_CALL% download "%RELEASE_URL%" "%VERSION_LIST_SOURCE%"
 	@for /F "tokens=* USEBACKQ" %%F IN (`FINDSTR  /R /C:"distributions/gradle" "%VERSION_LIST_SOURCE%"`) do @(
