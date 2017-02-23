@@ -1,5 +1,14 @@
 ::: function CMD_sync(MOST_CLEAN=N) delayedexpansion
 
+rem if $CURRENT_BRANCH is $MAIN_BRANCH (master)
+rem synchronize with two branch
+rem remote <-> $MAIN_BRANCH
+
+rem else if they are different
+rem synchronize with three branch. one is remote, two are local.
+rem remote <-> $MAIN_BRANCH -> $CURRENT_BRANCH
+
+
 rem TODO: 在commit之前先偵查status, 如果有任何已經commit的紀錄則不commit
 
 set MAIN_BRANCH=master
@@ -25,7 +34,7 @@ for /f %%i in (".patchtest") do set filesize=%%~zi
 if "%filesize%" == "0" (
     call :PrintMsg normal gitsync no change
     del .patchtest
-    return
+    goto :return_CMD_sync
 )
 
 git apply --check .patchtest 2>nul
@@ -52,12 +61,26 @@ if "%errorlevel_save%" == "0" (
 if not errorlevel 1 (
     git push -v origin --progress --tags
 ) else (
-	call :PrintMsg error gitsync merge failed
+	call :PrintMsg error gitsync merge failed, this is a very rare situation
 )
 
+:return_CMD_sync
 if not "%CURRENT_BRANCH%" == "%MAIN_BRANCH%" git checkout %CURRENT_BRANCH%
 if not "%CURRENT_BRANCH%" == "%MAIN_BRANCH%" git rebase %MAIN_BRANCH%
+if errorlevel 1 (
+    call :PrintMsg warning gitsync rebase maybe conflict, abort rebase
+    git rebase --abort
+)
 if not "%CURRENT_CHANGES%" == "" git stash pop
+
+git submodule foreach git diff-index --quiet HEAD
+if errorlevel 1 (
+    call :PrintMsg warning gitsync some submodules is in the dirty status
+    call :PrintMsg warning gitsync all submodules will not update until their folder is clean
+) else (
+	git submodule sync
+	git submodule update --init --recursive
+)
 
 ::: endfunc
 

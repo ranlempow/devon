@@ -1,15 +1,19 @@
 ::: function CMD_setup(UserName=?, GithubToken=?)
+rem TODO: force option
 
-rem TODO: write default untrack dir to gitignore
-rem TODO: write default not-work-tree dir to .git\exclude
-
-for /f %%i in ('git config --local user.name') do set AlreadySetup=%%i
-if not "%AlreadySetup%" == "" (
-   return
-)
+rem for /f %%i in ('git config --local user.name') do set AlreadySetup=%%i
+rem if not "%AlreadySetup%" == "" (
+rem    return
+rem )
 
 git rev-parse 1>nul 1>&2
 if errorlevel 1 error("Not a git repository")
+
+for /f %%i in ('git rev-parse --git-dir') do set GitDir=%%i
+rem already setup
+if exist "%GitDir%/.devone" (
+    return
+)
 
 if "%UserName%" == "" set /P UserName=Enter your name (or input 'global' use global config):
 if "%GithubToken%" == "" set /P GithubToken=Enter the secret token:
@@ -35,12 +39,17 @@ echo.login %LoginName%>> %HOME%/_netrc
 echo.password %LoginPassword%>> %HOME%/_netrc
 echo.>> %HOME%/_netrc
 
+
+rem TODO: custom git configs
 if not "%UserName%" == "global" (
 	git config --local user.name %UserName%
 	git config --local user.email %UserName%@users.noreply.github.com
-	git config --local core.autocrlf true
-	git config --local push.default simple
 )
+git config --local core.autocrlf true
+git config --local push.default simple
+
+git hooks --install
+echo. > "%GitDir%/.devone"
 
 ::: endfunc
 

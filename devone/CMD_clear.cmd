@@ -1,10 +1,19 @@
 
+
 ::: function CMD_clear()
 
 rem TODO: check submodule status is clean
 rem TODO: remove submodule dir
+rem pushd %subdir%
+rem git diff-index --quiet HEAD
+rem if not errorlevel 1 del .\*
+rem popd
+
 
 rem TODO: remove default removable dir
+rem if exist "%PRJ_LOG%" del /Q "%PRJ_LOG%\*"
+rem if exist "%PRJ_TMP%" del /Q "%PRJ_TMP%\*"
+rem if exist "%PRJ_VAR%" del /Q "%PRJ_VAR%\*"
 
 rem clear from devone.ini[clear]
 set inival=
