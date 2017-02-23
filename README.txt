@@ -1,4 +1,4 @@
-Generalized Software development kit
+Generalized software development kit
 通用化軟體開發套件
 
 ## 目標
