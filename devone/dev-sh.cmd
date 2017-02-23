@@ -1,29 +1,53 @@
 
-rem SCRIPT_SOURCE
-rem SCRIPT_FOLDER
+@rem SCRIPT_FOLDER
+@rem SCRIPT_SOURCE
+
+@rem protective execute
+@rem if the execution is interrupted or exited, it run POST_SCIRPT to clean up
+@rem POST_SCIRPT is also use to return variable to environment
+@if not "%~1" == "_start_" (
+    set POST_SCIRPT=%TEMP%\devone_post_script-%RANDOM%.cmd
+    set POST_ERRORLEVEL=0
+)
+@if not "%~1" == "_start_" (
+    echo.>"%POST_SCIRPT%"
+    cmd /c "%~f0" _start_ %*
+)
+@if not "%~1" == "_start_" (
+    call "%POST_SCIRPT%"
+    del "%POST_SCIRPT%"
+)
+@if not "%~1" == "_start_" if "%POST_ERRORLEVEL%" == "" set POST_ERRORLEVEL=0
+@if not "%~1" == "_start_" (
+    set POST_SCIRPT=
+    set POST_ERRORLEVEL=
+    set SCRIPT_FOLDER=
+    set SCRIPT_SOURCE=
+    cmd /c exit /b %POST_ERRORLEVEL%
+    goto :eof
+)
 
 @call :Main %*
-@if not "%SetEnvFile%" == "" @call "%SetEnvFile%" --set
-@set SetEnvFile=
 @goto :eof
 
 
-::: function Main(cmd=shell,
-                  args=...)
-@set _devcmd=%cmd%
-@set _devargs=%args%
-@set cmd=
-@set args=
-@call :ExcuteCommand
-return %SetEnvFile%
+::: function Main(_start_, cmd=shell,
+                  args=...) delayedexpansion
+set _devcmd=%cmd%
+set _devargs=%args%
+set _start_=
+set cmd=
+set args=
+set DEVONE_VERSION=1.0.0
+
+rem 如果還沒進入shell則先進入臨時性的shell
+call :ActiveDevShell
+call :CMD_%_devcmd% %_devargs%
 ::: endfunc
 
 #include("spilt-string.cmd")
 #include("parseini.cmd")
 #include("project-paths.cmd")
-
-::: inline(VAR)
-::: endinline
 
 ::: function BasicCheck()
     if not "%~d0" == "C:" (

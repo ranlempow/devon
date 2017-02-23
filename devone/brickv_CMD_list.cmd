@@ -22,10 +22,7 @@
     set args=
     call :FindAppLocation
     echo %AppPath%
-    set SetEnvFile=
-    if not "%AppPath%" == "" set SetEnvFile=%AppPath%\set-env.cmd
-    rem if not "%AppPath%" == "" call "%AppPath%\set-env.cmd" --set
-    return %SetEnvFile%
+    if "%AppPath%" != "" echo.@call "%AppPath%\set-env.cmd" --set >> "%POST_SCIRPT%"
 ::: endfunc
 
 
