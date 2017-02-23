@@ -272,6 +272,7 @@ class ShellCompiled():
         with open(subroutine_path, 'w', encoding='utf-8') as fp:
             fp.write('@set TEST_SHELL=1\n')
             fp.write('@call :{} %*\n'.format(label))
+            fp.write('@if not "%ERROR_MSG%" == "" @goto :_Error\n')
             fp.write('@goto :eof\n')
             fp.write(self.script_body)
         return ScriptExecution(subroutine_path[:-4], args, env).run()

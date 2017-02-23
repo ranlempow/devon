@@ -180,8 +180,9 @@ def gen_function(parser, block, match):
 
     # nature enter
     enterlocal()
-    output.append('goto :REALBODY_{funcname}'.format(funcname=funcname))
-
+    output.append('call :REALBODY_{funcname}'.format(funcname=funcname))
+    output.append('if not "%ERROR_MSG%" == "" goto :_Error')
+    output.append('goto :eof')
     # call enter
     output.append(':{funcname}'.format(funcname=funcname))
     enterlocal()
