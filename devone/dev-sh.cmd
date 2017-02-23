@@ -64,26 +64,30 @@ call :CMD_%_devcmd% %_devargs%
 
 :ActiveDevShell
 rem switch to dev-sh environment, if not in dev-sh
-if not "%DEVSH_ACTIVATE%" == "" goto :eof
+if "%DEVSH_ACTIVATE%" == "%SCRIPT_SOURCE%" goto :eof
 
 call :BasicCheck
 call :LoadConfigPaths
-call :GetTitle !PRJ_ROOT!
+call :GetTitle %PRJ_ROOT%
+
+rem start set PATH
+set PATH=C:\__dev_setpath;%PATH%
 
 rem add PRJ_BIN, PRJ_TOOLS to path
-set PATH=!PRJ_BIN!;!PRJ_TOOLS!;!PATH!
+if exist "%PRJ_BIN%" set PATH=%PRJ_BIN%;%PATH%
+if exist "%PRJ_TOOLS%" set PATH=%PRJ_TOOLS%;%PATH%
+if exist "%PRJ_CONF%" set PATH=%PRJ_CONF%;%PATH%
 
 rem add paths from config[path]
 call :GetIniArray %DEVONE_CONFIG_PATH% "path"
-set PATH=!inival!;!PATH!
+call set inival=%inival%
+set PATH=%inival%;%PATH%
 
-if "%HOME%" == "" set HOME=PRJ_ROOT/.home
-set PROMPT=$C!TITLE!$F$S$P$G
 
 rem prepare temporary command stub folder
-rmdir /S /Q !PRJ_TMP!\command
-md !PRJ_TMP!\command
-set PATH=!PRJ_TMP!\command;!PATH!
+rmdir /S /Q %PRJ_TMP%\command
+md %PRJ_TMP%\command
+set PATH=%PRJ_TMP%\command;%PATH%
 
 rem set-env
 rem TODO: 注意相對路徑之間的問題
@@ -104,31 +108,27 @@ if exist "%PRJ_CONF%\hooks\set-env.cmd" (
 rem end set PATH
 set PATH=C:\__dev_endpath;%PATH%
 
-rem create temporary command stub
-call :GetIniPairs %DEVONE_CONFIG_PATH% "alias"
-(set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
-goto :SubString
-:create_alias_file
-    echo !substring!
-    for /f "tokens=1,2 delims==" %%a in ("!substring!") do (
-        set alias=%%a
-        set alias_cmd=%%b
-    )
-    echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command\%alias%.cmd
-    goto :NextSubString
-:exit_create_alias_file
-set alias=
-set alias_cmd=
-set inival=
+call :GenerateCommandStubs
 
-echo.@"%SCRIPT_SOURCE%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
+set DEVSH_ACTIVATE=%SCRIPT_SOURCE%
+goto :eof
 
 
-set GitShellScript=#^^!/usr/bin/env bash^
+::: function CMD_brickv(brickv_cmd, brickv_args=...)
+    call :brickv_CMD_%brickv_cmd% %brickv_args%
+::: endfunc
 
-"C:\\Program Files (x86)\\Git\\bin\\sh.exe" --login -i
+::: function CMD_welcome()
+    if not "%ANSICON%" == "" call :ImportColor
+    echo %BW%Devone%NN% v%DEVONE_VERSION% [project %DC%%TITLE%%NN%]
+    call :GetIniValue %DEVONE_CONFIG_PATH% "help" "*"
+    if not "%inival%" == "" call echo %inival%
+    echo.@set PROMPT=$C%DC%!TITLE!%NN%$F$S$P$G > "%POST_SCIRPT%"
+::: endfunc
 
-echo.!GitShellScript! > %PRJ_TMP%\command\git-shell
+::: function CMD_version()
+    echo v%DEVONE_VERSION%
+::: endfunc
 
 
 ::: function GenerateCommandStubs()
