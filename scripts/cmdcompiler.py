@@ -229,9 +229,10 @@ def gen_function(parser, block, match):
         ':ArgCheckLoop_{}'.format(funcname),
         'set head=%~1',
         'set next=%~2',
+        'set next_prefix=%next:~0,1%'
         '',
-        'if "%head%" == "" goto :GetRestArgs_{}'.format(funcname),
-        'if "%next%" == "" set next=__NONE__',
+        'if x%1x == xx goto :GetRestArgs_{}'.format(funcname),
+        'if x%2x == xx set next=__NONE__',
         '',
     ])
 
@@ -270,8 +271,8 @@ def gen_function(parser, block, match):
         elif value:
             output.append('@if "%head%" == "--{}" @('.format(prefixname))
             output.append('    @set {}=%next%'.format(name))
-            output.append('    @if "%next%" == "__NONE__"' + parser.error_str('Need value after "%head%"', blockname=funcname))
-            output.append('    @if "%next:~0,1%" == "-"' + parser.error_str('Need value after "%head%"', blockname=funcname))
+            output.append('    @if "%next%" == "__NONE__"' + parser.error_str('Need value after %head%', blockname=funcname))
+            output.append('    @if "%next_prefix%" == "-"' + parser.error_str('Need value after %head%', blockname=funcname))
             output.append('    @shift')
             output.append('    @shift')
             output.append('    @goto :ArgCheckLoop_{}'.format(funcname))
