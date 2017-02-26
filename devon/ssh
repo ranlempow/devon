@@ -1,5 +1,20 @@
 #!/usr/bin/env bash
 
+
+# find the real ssh/scp executable
+program=$(basename "$0")
+if [ "${program}" == ssh ]; then
+    program=ssh
+    short_options="1246AaCfgKkMNnqsTtVvXxYy"
+elif [ "${program}" == scp ]; then
+    program=scp
+    short_options="12346BCpqrv"
+else
+    echo unknown program ${program}
+    exit 1
+fi
+
+# parse arguments
 prefix_args=()
 suffix_args=()
 userhost=
@@ -8,7 +23,7 @@ do
     arg=$1
     if [[ ${arg} == -* ]]; then
         arg=${arg#-}
-        if [[ "1246AaCfgKkMNnqsTtVvXxYy" == *${arg}* ]]; then
+        if [[ ${short_options} == *${arg}* ]]; then
             prefix_args+=("-${arg}")
             shift
         else
@@ -19,6 +34,7 @@ do
         fi
     else
         userhost=$1
+        first_arg=$1
         shift
         while test ${#} -gt 0
         do
@@ -28,28 +44,37 @@ do
     fi
 done
 
+
+
 # try to find the username
+if [[ ! ${userhost} == *"@"* ]]; then
+    if [ "${program}" == scp ]; then
+        userhost=${suffix_args[@]: -1}
+    fi
+fi
+
+if [[ ! ${userhost} == *"@"* ]]; then
+    echo error: $$user@$$host not in arguments
+    exit 1
+fi
+
 IFS='@' read -r -a array <<< "${userhost}"
 user=${array[0]}
 host=${array[1]}
+if [ "${program}" == scp ]; then
+    IFS=':' read -r -a array <<< "${host}"
+    host=${array[0]}
+fi
 if [ "${user}" == "git" ]; then
     # github arguments: git@github.com git-receive-pack 'ranlempow/git-hooks.git'
     IFS='/' read -r -a array <<< "${suffix_args[@]: -1}"
     user=${array[0]}
     len=${#suffix_args[@]}
+    # add quote "'"
     suffix_args[${len} - 1]="'${suffix_args[${len} - 1]}'"
 fi
 
-# find the real ssh/scp executable
-program=$(basename "$0")
-if [ "${program}" == ssh ]; then
-    program=ssh
-elif [ "${program}" == scp ]; then
-    program=scp
-else
-    echo unknown program ${program}
-    exit 1
-fi
+
 
 for _ssh_exec in $(type -ap ${program}); do
     if [ ${_ssh_exec} -ef $0 ]; then continue; fi
@@ -70,9 +95,10 @@ keypath="$(cd "$(dirname "${keypath}")"; pwd)/$(basename "${keypath}")"
 # echo ${suffix_args[@]}
 # echo ${ssh_exec}
 # echo ${keypath}
-
+echo ${keypath}
 if [ -f ${keypath} ]; then
-    ${ssh_exec} -i "${keypath}" ${prefix_args[@]} ${userhost} ${suffix_args[@]}
+    ${ssh_exec} -i "${keypath}" ${prefix_args[@]} ${first_arg} ${suffix_args[@]}
 else
-    ${ssh_exec} ${prefix_args[@]} ${userhost} ${suffix_args[@]}
+    ${ssh_exec} ${prefix_args[@]} ${first_arg} ${suffix_args[@]}
 fi
+
