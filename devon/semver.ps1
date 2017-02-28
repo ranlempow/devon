@@ -120,18 +120,22 @@ function SelectVersion {
     if ($output) {
         $specsOutput | Set-Content -path $output
     } else {
-        Write-Host $specsOutput
+        # because Write-Output to pipe that breaks lines to fit console
+        # instead we use Write-Host to prevent this issue
+        # notice:
+        #   Write-Host output '\n' new line character rather than '\r\n'
+        $specsOutput | ForEach-Object { Write-Host $_ }
     }
 }
 
 function Test {
-    $specsString = 'app2=3.1.X@x86[a,b] app2=2.1.X@x86[a,b]'
-    $specsStrings = @(' app1=3.1.X@x86[a, b] ', 'app1=2.1.X@x86[a, b] ', '  ')
-    # $specsFile = 'C:\Users\ran\Desktop\brickv\base\verlist.txt'
-    $specMatch = 'app2=3'
+    # $specsString = 'app2=3.1.X@x86[a,b] app2=2.1.X@x86[a,b]'
+    # $specsStrings = @(' app1=3.1.X@x86[a, b] ', 'app1=2.1.X@x86[a, b] ', '  ')
+    $specsFile = 'C:\Users\ran\Desktop\brickv\var\tmp\spces-git.ver.txt'
+    $specMatch = 'git=2.10@any[ssh-stab]'
     $outputFormat = 'cmd'
     $output = ''
-    $bestMatch = 0
+    $bestMatch = 1
 }
 
 

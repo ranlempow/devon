@@ -1,9 +1,7 @@
 
 
 
-::: function brickv_CMD_install(args=...) delayedexpansion
-
-rem TODO: avoid in the dirty status which enter with old variable
+::: function brickv_CMD_install(ONLY_VERSIONS=N, args=....) delayedexpansion
 
 set ACCEPT=1
 
@@ -18,14 +16,15 @@ if "%LabelExists%" == "1" (
 ) else (
     error("%APPNAME% not in installable list")
 )
-
 rem detect
 rem call :ExistsLabel %APPNAME%_detect
 rem if "%LabelExists%" == 1 call :%APPNAME%_detect
 
 rem versions
+if not "%PRJ_TMP%" == "" set TEMP=%PRJ_TMP%
 set VERSION_SOURCE_FILE=%TEMP%\source_%APPNAME%.ver.txt
 set VERSION_SPCES_FILE=%TEMP%\spces-%APPNAME%.ver.txt
+
 if exist "%VERSION_SOURCE_FILE%" del "%VERSION_SOURCE_FILE%" >nul
 copy /y NUL "%VERSION_SOURCE_FILE%" >NUL
 if exist "%VERSION_SPCES_FILE%" del "%VERSION_SPCES_FILE%" >nul
@@ -34,6 +33,10 @@ copy /y NUL "%VERSION_SPCES_FILE%" >NUL
 call :ExistsLabel %APPNAME%_versions
 if "%LabelExists%" == "1" call :%APPNAME%_versions
 if exist "%RELEASE_URL%" call :BrickvDownload "%RELEASE_URL%" "%VERSION_SPCES_FILE%"
+if "%ONLY_VERSIONS%" == "1" (
+    return %VERSION_SPCES_FILE%
+)
+
 if exist "%VERSION_SPCES_FILE%" (
     pcall :MatchVersion --output-format env --spec-match "%REQUEST_SPEC%" --specs-file "%VERSION_SPCES_FILE%"
             if not "!ERROR_MSG!" == "" goto :brickv_CMD_install_Error
@@ -61,8 +64,11 @@ if not "%DOWNLOAD_URL%" == "" if "%INSTALLER%" == "" call :FilenameFromUrl "%DOW
 if not "%DOWNLOAD_URL%" == "" if "%INSTALLER%" == "" set INSTALLER=%TEMP%\%Filename%
 set Filename=
 call :PrintTaskInfo
+if "%DRYRUN%" == "1" goto :BrickvInstallFinal
 
-if not "%DOWNLOAD_URL%" == "" pcall :BrickvDownload "%DOWNLOAD_URL%" "%INSTALLER%"
+if not "%DOWNLOAD_URL%" == "" (
+    pcall :BrickvDownload "%DOWNLOAD_URL%" "%INSTALLER%" --skip-exists
+)
         if not "%ERROR_MSG%" == "" goto :brickv_CMD_install_Error
 
 rem unpack
@@ -92,16 +98,16 @@ pcall :BrickvGenEnv "%TARGET%" "%SETENV%"
 
 pcall :BrickvValidate
 if not "%ERROR_MSG%" == "" (
-    call :PrintMsg warning validate error: %ERROR_MSG%
+    call :PrintMsg warning warning validate error: %ERROR_MSG%
 ) else (
     call :PrintMsg noraml validate succeed
 )
 
-
+:BrickvInstallFinal
 set ERROR_MSG=
 ncall :BrickvDone
 cmd /C exit /b 0
-return
+return %DRYRUN%, %REQUEST_NAME%
 
 
 :brickv_CMD_install_Error
@@ -120,8 +126,8 @@ cmd /C exit /b 1
 
     if errorlevel 1 error("self validate failed")
 
-    if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_SOURCE%\%CHECK_EXIST%" (
-        error("exist validate failed %SCRIPT_SOURCE%\%CHECK_EXIST%")
+    if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_FOLDER%\%CHECK_EXIST%" (
+        error("exist validate failed %SCRIPT_FOLDER%\%CHECK_EXIST%")
     )
 
     if "%CHECK_LINEWORD%" == "" if "%CHECK_OK%" == "" (
@@ -140,15 +146,11 @@ cmd /C exit /b 1
         for /F "tokens=* USEBACKQ" %%F in (`cmd /C %CHECK_CMD% ^| findstr %CHECK_LINEWORD%`) do @set CHECK_STRING=%%F
     )
     rem echo version ok
-    if not "%CHECK_STRING%" == "%CHECK_OK%" error("validate failed not match %CHECK_STRING% != %CHECK_OK%")
+    rem if not "%CHECK_STRING%" == "%CHECK_OK%"
+    if "!CHECK_STRING:%CHECK_OK%=!" == "%CHECK_STRING%" error("validate failed not match %CHECK_STRING% != %CHECK_OK%")
     return
 
 ::: endfunc
-
-
-rem :NormalizePath
-rem     set Normalized=%~dpfn1
-rem     goto :eof
 
 
 :ExistsLabel
@@ -162,10 +164,6 @@ goto :eof
 #include("brickv_genenv.cmd")
 #include("brickv_download.cmd")
 
-rem :appxxx_init:
-rem goto :eof
-rem :appxxx_versions:
-rem set RELEASE_LIST=appxxx=1.0
-rem goto :eof
 
 #include("..\larges\gradle\install-global-new2.cmd")
+#include("..\larges\git\install-2.cmd")

@@ -1,5 +1,5 @@
 ::: function BrickvDownload(Url, Output, Cookie=?, skip_exists=N) delayedexpansion
-    if "%FORCE%" == ""  if "%skip_exists%" == "1" set SkipExists=1
+    if not "%FORCE%" == "1"  if "%skip_exists%" == "1" set SkipExists=1
 
     set err=
     set ErrorFile=%TEMP%\download_error
