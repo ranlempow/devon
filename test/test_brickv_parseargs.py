@@ -15,7 +15,8 @@ class Test(ScriptTestCase):
         return {
             # 'DRYRUN':
             'FORCE': '0',
-            'LOCAL_DIR': 'C:\\Users\\ran\\AppData\\Local\\Programs',
+            # 'LOCAL_DIR': 'C:\\',
+            'GLOBAL_DIR': 'C:\\Users\\ran\\AppData\\Local\\Programs',
             # 'CHECKONLY':
             # 'NOCHECK':
             'NO_COLOR': '0',

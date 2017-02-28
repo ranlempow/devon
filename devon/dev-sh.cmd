@@ -10,8 +10,8 @@
     set POST_ERRORLEVEL=0
 )
 @if not "%~1" == "_start_" (
-    echo.>"%POST_SCIRPT%"
-    cmd /c "%~f0" _start_ %*
+    copy /y NUL "%POST_SCIRPT%" >NUL
+    cmd /c "%~f0 _start_ %*"
 )
 @if not "%~1" == "_start_" (
     call "%POST_SCIRPT%"
@@ -23,16 +23,29 @@
     set POST_ERRORLEVEL=
     set SCRIPT_FOLDER=
     set SCRIPT_SOURCE=
-    cmd /c exit /b %POST_ERRORLEVEL%
+    exit /b %POST_ERRORLEVEL%
     goto :eof
 )
 
 @call :Main %*
 @goto :eof
 
+:EnterPostScript
+set _OLD_POST_SCIRPT=%POST_SCIRPT%
+set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
+set POST_ERRORLEVEL=0
+copy /y NUL "%POST_SCIRPT%" >NUL
+goto :eof
+
+:ExecutePostScript
+call "%POST_SCIRPT%"
+del "%POST_SCIRPT%"
+set POST_SCIRPT=%_OLD_POST_SCIRPT%
+set _OLD_POST_SCIRPT=
+goto :eof
 
 ::: function Main(_start_, cmd=shell,
-                  args=...) delayedexpansion
+                  args=....) delayedexpansion
 set _devcmd=%cmd%
 set _devargs=%args%
 set _start_=
@@ -41,8 +54,9 @@ set args=
 set DEVON_VERSION=1.0.0
 
 rem 如果還沒進入shell則先進入臨時性的shell
-call :ActiveDevShell
+if not %_devcmd% == "brickv" call :ActiveDevShell
 call :CMD_%_devcmd% %_devargs%
+
 ::: endfunc
 
 #include("spilt-string.cmd")
@@ -101,6 +115,20 @@ goto :SubString
 :exit_call_dotfile
 set inival=
 
+call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
+if not "%inival%" == "" set specs=%inival:;= %
+rem set _OLD_POST_SCIRPT=%POST_SCIRPT%
+rem set POST_SCIRPT=%TEMP%\devon_update_post_script.cmd
+rem copy /y NUL "%POST_SCIRPT%" >NUL
+call :EnterPostScript
+call :brickv_CMD_Update "%specs%" --no-install --vvv
+call :ExecutePostScript
+rem call "%POST_SCIRPT%"
+rem del "%POST_SCIRPT%"
+rem set POST_SCIRPT=%_OLD_POST_SCIRPT%
+rem set _OLD_POST_SCIRPT=
+
+
 if exist "%PRJ_CONF%\hooks\set-env.cmd" (
     call "%PRJ_CONF%\hooks\set-env.cmd"
 )
@@ -114,7 +142,7 @@ set DEVSH_ACTIVATE=%SCRIPT_SOURCE%
 goto :eof
 
 
-::: function CMD_brickv(brickv_cmd, brickv_args=...)
+::: function CMD_brickv(brickv_cmd, brickv_args=....)
     call :brickv_CMD_%brickv_cmd% %brickv_args%
 ::: endfunc
 
@@ -153,9 +181,9 @@ goto :eof
     #include(GitHooksScript, "git-hooks")
     echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
 
-    #include(SSHScript, "ssh")
-    echo.!SSHScript! > %PRJ_TMP%\command\ssh
-    echo.!SSHScript! > %PRJ_TMP%\command\scp
+    rem #include(SSHScript, "ssh")
+    rem echo.!SSHScript! > %PRJ_TMP%\command\ssh
+    rem echo.!SSHScript! > %PRJ_TMP%\command\scp
 
     #include(GitBashScript, "bash.cmd")
     echo.!GitBashScript! > %PRJ_TMP%\command\bash.cmd
@@ -163,17 +191,17 @@ goto :eof
     rem echo.@bash -c ssh %* > %PRJ_TMP%\command\ssh.cmd
     rem echo.@bash -c scp %* > %PRJ_TMP%\command\scp.cmd
 
-    #include(BashProfileScript, "bash_profile")
-    echo.!BashProfileScript! > %HOMEPATH%\.bashrc
+    rem #include(BashProfileScript, "bash_profile")
+    rem echo.!BashProfileScript! > %HOMEPATH%\.bashrc
 
 ::: endfunc
 
-::: function CMD_shell(no_window=N, no_welcom=N) delayedexpansion
+::: function CMD_shell(no_window=N, no_welcome=N) delayedexpansion
     rem create new shell window
     set CMDSCRIPT=
     set CMDSCRIPT=!CMDSCRIPT!^\n^
         (set no_window=)^&^\n^
-        (set no_welcom=)^&^\n^
+        (set no_welcome=)^&^\n^
         (set CMDSCRIPT=)^&^\n^
         (set CALL_STACK=)^&^\n^
         (set SCRIPT_FOLDER=)^&^\n^
@@ -194,11 +222,11 @@ goto :eof
     rem clink feature
     where clink.bat 2>&1 1>nul
     if not errorlevel 1 (
-        set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject)^&"
+        set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject 1>nul)^&"
     )
 
     rem show welcome text and change prompt
-    if not "%no_welcom%" == "1" (
+    if not "%no_welcome%" == "1" (
         set "CMDSCRIPT=!CMDSCRIPT!(dev welcome)^&"
     )
     rem finish cmd script

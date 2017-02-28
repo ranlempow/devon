@@ -6,12 +6,12 @@
 
 
 @if not "%~1" == "_start_" (
-    set POST_SCIRPT=%TEMP%\devone_post_script-%RANDOM%.cmd
+    set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
     set POST_ERRORLEVEL=0
 )
 @if not "%~1" == "_start_" (
-    echo.>"%POST_SCIRPT%"
-    cmd /c "%~f0" _start_ %*
+    copy /y NUL "%POST_SCIRPT%" >NUL
+    cmd /c "%~f0 _start_ %*"
 )
 @if not "%~1" == "_start_" (
     call "%POST_SCIRPT%"
@@ -23,15 +23,28 @@
     set POST_ERRORLEVEL=
     set SCRIPT_FOLDER=
     set SCRIPT_SOURCE=
-    cmd /c exit /b %POST_ERRORLEVEL%
+    exit /b %POST_ERRORLEVEL%
     goto :eof
 )
 
 @call :Main %*
 @goto :eof
 
+:EnterPostScript
+set _OLD_POST_SCIRPT=%POST_SCIRPT%
+set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
+set POST_ERRORLEVEL=0
+copy /y NUL "%POST_SCIRPT%" >NUL
+goto :eof
+
+:ExecutePostScript
+call "%POST_SCIRPT%"
+del "%POST_SCIRPT%"
+set POST_SCIRPT=%_OLD_POST_SCIRPT%
+set _OLD_POST_SCIRPT=
+goto :eof
 ::: function Main(_start_, cmd=shell,
-:::                   args=...) delayedexpansion
+:::                   args=....) delayedexpansion
 @setlocal  enabledelayedexpansion
 @echo off
 @set ERROR_MSG=
@@ -39,7 +52,9 @@
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_Main
+call :REALBODY_Main %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :Main
 @setlocal  enabledelayedexpansion
 @echo off
@@ -52,7 +67,7 @@ set CALL_STACK=Main %CALL_STACK%
 goto :REALBODY_Main
 :REALBODY_Main
 set _start_=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument _start_" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%_start_%" == "" endlocal & ( set "ERROR_MSG=Need argument _start_" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set cmd=shell
 set args=
@@ -60,14 +75,14 @@ set args=
 :ArgCheckLoop_Main
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_Main
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_Main
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--cmd" @(
     @set cmd=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_Main
@@ -76,11 +91,11 @@ if "%next%" == "" set next=__NONE__
 
 :GetRestArgs_Main
 
-@set args="%~1"
+@set args=%1
 @shift
 :GetRestArgsLoop_Main
 @if "%~1" == "" @goto :Main_Main
-@set args=%args% "%~1"
+@set args=%args% %1
 @shift
 @goto :GetRestArgsLoop_Main
 :Main_Main
@@ -91,10 +106,11 @@ set _devargs=%args%
 set _start_=
 set cmd=
 set args=
-set DEVONE_VERSION=1.0.0
+set DEVON_VERSION=1.0.0
 
-call :ActiveDevShell
+if not %_devcmd% == "brickv" call :ActiveDevShell
 call :CMD_%_devcmd% %_devargs%
+
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -146,7 +162,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_GetIniArray
+call :REALBODY_GetIniArray %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :GetIniArray
 @setlocal enableextensions enabledelayedexpansion
 @echo off
@@ -159,18 +177,18 @@ set CALL_STACK=GetIniArray %CALL_STACK%
 goto :REALBODY_GetIniArray
 :REALBODY_GetIniArray
 set file=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument file" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniArray" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%file%" == "" endlocal & ( set "ERROR_MSG=Need argument file" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniArray" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set area=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument area" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniArray" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%area%" == "" endlocal & ( set "ERROR_MSG=Need argument area" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniArray" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_GetIniArray
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_GetIniArray
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_GetIniArray
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniArray" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -231,7 +249,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_GetIniPairs
+call :REALBODY_GetIniPairs %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :GetIniPairs
 @setlocal enableextensions enabledelayedexpansion
 @echo off
@@ -244,18 +264,18 @@ set CALL_STACK=GetIniPairs %CALL_STACK%
 goto :REALBODY_GetIniPairs
 :REALBODY_GetIniPairs
 set file=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument file" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniPairs" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%file%" == "" endlocal & ( set "ERROR_MSG=Need argument file" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniPairs" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set area=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument area" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniPairs" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%area%" == "" endlocal & ( set "ERROR_MSG=Need argument area" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniPairs" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_GetIniPairs
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_GetIniPairs
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_GetIniPairs
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniPairs" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -316,7 +336,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_GetIniValue
+call :REALBODY_GetIniValue %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :GetIniValue
 @setlocal enableextensions enabledelayedexpansion
 @echo off
@@ -329,21 +351,21 @@ set CALL_STACK=GetIniValue %CALL_STACK%
 goto :REALBODY_GetIniValue
 :REALBODY_GetIniValue
 set file=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument file" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%file%" == "" endlocal & ( set "ERROR_MSG=Need argument file" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set area=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument area" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%area%" == "" endlocal & ( set "ERROR_MSG=Need argument area" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set key=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument key" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%key%" == "" endlocal & ( set "ERROR_MSG=Need argument key" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_GetIniValue
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_GetIniValue
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_GetIniValue
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=parseini.cmd" & set "ERROR_BLOCK=GetIniValue" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -402,7 +424,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_GetPrjRoot
+call :REALBODY_GetPrjRoot %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :GetPrjRoot
 @setlocal  
 @echo off
@@ -418,9 +442,9 @@ goto :REALBODY_GetPrjRoot
 :ArgCheckLoop_GetPrjRoot
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_GetPrjRoot
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_GetPrjRoot
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=project-paths.cmd" & set "ERROR_BLOCK=GetPrjRoot" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -462,7 +486,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_GetTitle
+call :REALBODY_GetTitle %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :GetTitle
 @setlocal  
 @echo off
@@ -475,15 +501,15 @@ set CALL_STACK=GetTitle %CALL_STACK%
 goto :REALBODY_GetTitle
 :REALBODY_GetTitle
 set titlePath=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument titlePath" & set "ERROR_SOURCE=project-paths.cmd" & set "ERROR_BLOCK=GetTitle" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%titlePath%" == "" endlocal & ( set "ERROR_MSG=Need argument titlePath" & set "ERROR_SOURCE=project-paths.cmd" & set "ERROR_BLOCK=GetTitle" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_GetTitle
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_GetTitle
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_GetTitle
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=project-paths.cmd" & set "ERROR_BLOCK=GetTitle" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -525,7 +551,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_LoadConfigPaths
+call :REALBODY_LoadConfigPaths %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :LoadConfigPaths
 @setlocal  
 @echo off
@@ -541,9 +569,9 @@ goto :REALBODY_LoadConfigPaths
 :ArgCheckLoop_LoadConfigPaths
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_LoadConfigPaths
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_LoadConfigPaths
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=project-paths.cmd" & set "ERROR_BLOCK=LoadConfigPaths" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -551,7 +579,7 @@ if "%next%" == "" set next=__NONE__
 :Main_LoadConfigPaths
 @set head=
 @set next=
-:: 尋找並讀取devone.ini設定檔, 此檔案可以放在PRJ_ROOT或是PRJ_ROOT/config
+:: 尋找並讀取devon.ini設定檔, 此檔案可以放在PRJ_ROOT或是PRJ_ROOT/config
 :: 不論此設定檔存在與否, 均會回傳以下路徑設定
 :: PRJ_BIN, PRJ_VAR, PRJ_LOG, PRJ_TMP, PRJ_CONF
 
@@ -563,25 +591,25 @@ set CONFIG_PATH=
 pushd %PRJ_ROOT%
 pushd config 2>nul
 if not errorlevel 1 (
-    if exist "devone.ini" set CONFIG_PATH=%cd%
+    if exist "devon.ini" set CONFIG_PATH=%cd%
     popd
 )
-if exist "devone.ini" set CONFIG_PATH=%cd%
+if exist "devon.ini" set CONFIG_PATH=%cd%
 popd
-if not "%CONFIG_PATH%" == "" set DEVONE_CONFIG_PATH=%CONFIG_PATH%\devone.ini
+if not "%CONFIG_PATH%" == "" set DEVON_CONFIG_PATH=%CONFIG_PATH%\devon.ini
 
 
 
 
-call :GetIniValue %CONFIG_PATH%\devone.ini layout bin
+call :GetIniValue %CONFIG_PATH%\devon.ini layout bin
 set PRJ_BIN_RAW=%inival%
-call :GetIniValue %CONFIG_PATH%\devone.ini layout var
+call :GetIniValue %CONFIG_PATH%\devon.ini layout var
 set PRJ_VAR_RAW=%inival%
-call :GetIniValue %CONFIG_PATH%\devone.ini layout log
+call :GetIniValue %CONFIG_PATH%\devon.ini layout log
 set PRJ_LOG_RAW=%inival%
-call :GetIniValue %CONFIG_PATH%\devone.ini layout tmp
+call :GetIniValue %CONFIG_PATH%\devon.ini layout tmp
 set PRJ_TMP_RAW=%inival%
-call :GetIniValue %CONFIG_PATH%\devone.ini layout config
+call :GetIniValue %CONFIG_PATH%\devon.ini layout config
 set PRJ_CONF_RAW=%inival%
 
 if "%PRJ_BIN_RAW%" == "" if exist "%PRJ_ROOT%\bin" set PRJ_BIN_RAW=bin
@@ -594,7 +622,7 @@ if "%PRJ_CONF_RAW%" == "" if exist "%PRJ_ROOT%\config" set PRJ_CONF_RAW=config
 if "%PRJ_BIN_RAW%" == "" set PRJ_BIN_RAW=bin
 set PRJ_BIN=%PRJ_ROOT%\%PRJ_BIN_RAW%
 if "%PRJ_VAR_RAW%" == "" (
-    set PRJ_VAR=%TEMP%\devone-%TITLE%
+    set PRJ_VAR=%TEMP%\devon-%TITLE%
 ) else (
     set PRJ_VAR=%PRJ_ROOT%\%PRJ_VAR_RAW%
 )
@@ -617,7 +645,7 @@ if "%PRJ_CONF%" == "" set PRJ_CONF=%PRJ_ROOT%\config
 
 
 endlocal & (
-    set DEVONE_CONFIG_PATH=%DEVONE_CONFIG_PATH%
+    set DEVON_CONFIG_PATH=%DEVON_CONFIG_PATH%
     set PRJ_ROOT=%PRJ_ROOT%
     set PRJ_BIN=%PRJ_BIN%
     set PRJ_VAR=%PRJ_VAR%
@@ -648,7 +676,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BasicCheck
+call :REALBODY_BasicCheck %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BasicCheck
 @setlocal  
 @echo off
@@ -664,9 +694,9 @@ goto :REALBODY_BasicCheck
 :ArgCheckLoop_BasicCheck
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BasicCheck
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BasicCheck
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=BasicCheck" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -704,7 +734,7 @@ if exist "%PRJ_BIN%" set PATH=%PRJ_BIN%;%PATH%
 if exist "%PRJ_TOOLS%" set PATH=%PRJ_TOOLS%;%PATH%
 if exist "%PRJ_CONF%" set PATH=%PRJ_CONF%;%PATH%
 
-call :GetIniArray %DEVONE_CONFIG_PATH% "path"
+call :GetIniArray %DEVON_CONFIG_PATH% "path"
 call set inival=%inival%
 set PATH=%inival%;%PATH%
 
@@ -714,7 +744,7 @@ md %PRJ_TMP%\command
 set PATH=%PRJ_TMP%\command;%PATH%
 
 set inival=
-call :GetIniArray %DEVONE_CONFIG_PATH% "dotfiles"
+call :GetIniArray %DEVON_CONFIG_PATH% "dotfiles"
 (set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
 goto :SubString
 :call_dotfile
@@ -722,6 +752,12 @@ goto :SubString
     goto :NextSubString
 :exit_call_dotfile
 set inival=
+
+call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
+if not "%inival%" == "" set specs=%inival:;= %
+call :EnterPostScript
+call :brickv_CMD_Update "%specs%" --no-install --vvv
+call :ExecutePostScript
 
 
 if exist "%PRJ_CONF%\hooks\set-env.cmd" (
@@ -735,7 +771,7 @@ call :GenerateCommandStubs
 set DEVSH_ACTIVATE=%SCRIPT_SOURCE%
 goto :eof
 
-::: function CMD_brickv(brickv_cmd, brickv_args=...)
+::: function CMD_brickv(brickv_cmd, brickv_args=....)
 @setlocal  
 @echo off
 @set ERROR_MSG=
@@ -743,7 +779,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_brickv
+call :REALBODY_CMD_brickv %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_brickv
 @setlocal  
 @echo off
@@ -756,26 +794,26 @@ set CALL_STACK=CMD_brickv %CALL_STACK%
 goto :REALBODY_CMD_brickv
 :REALBODY_CMD_brickv
 set brickv_cmd=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument brickv_cmd" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=CMD_brickv" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%brickv_cmd%" == "" endlocal & ( set "ERROR_MSG=Need argument brickv_cmd" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=CMD_brickv" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set brickv_args=
 
 :ArgCheckLoop_CMD_brickv
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_brickv
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_brickv
+if x%2x == xx set next=__NONE__
 
 @goto :GetRestArgs_CMD_brickv
 
 :GetRestArgs_CMD_brickv
 
-@set brickv_args="%~1"
+@set brickv_args=%1
 @shift
 :GetRestArgsLoop_CMD_brickv
 @if "%~1" == "" @goto :Main_CMD_brickv
-@set brickv_args=%brickv_args% "%~1"
+@set brickv_args=%brickv_args% %1
 @shift
 @goto :GetRestArgsLoop_CMD_brickv
 :Main_CMD_brickv
@@ -798,7 +836,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_welcome
+call :REALBODY_CMD_welcome %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_welcome
 @setlocal  
 @echo off
@@ -814,9 +854,9 @@ goto :REALBODY_CMD_welcome
 :ArgCheckLoop_CMD_welcome
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_welcome
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_welcome
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=CMD_welcome" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -825,8 +865,8 @@ if "%next%" == "" set next=__NONE__
 @set head=
 @set next=
 if not "%ANSICON%" == "" call :ImportColor
-echo %BW%Devone%NN% v%DEVONE_VERSION% [project %DC%%TITLE%%NN%]
-call :GetIniValue %DEVONE_CONFIG_PATH% "help" "*"
+echo %BW%Devone%NN% v%DEVON_VERSION% [project %DC%%TITLE%%NN%]
+call :GetIniValue %DEVON_CONFIG_PATH% "help" "*"
 if not "%inival%" == "" call echo %inival%
 echo.@set PROMPT=$C%DC%!TITLE!%NN%$F$S$P$G > "%POST_SCIRPT%"
 endlocal & (
@@ -845,7 +885,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_version
+call :REALBODY_CMD_version %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_version
 @setlocal  
 @echo off
@@ -861,9 +903,9 @@ goto :REALBODY_CMD_version
 :ArgCheckLoop_CMD_version
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_version
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_version
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=CMD_version" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -871,7 +913,7 @@ if "%next%" == "" set next=__NONE__
 :Main_CMD_version
 @set head=
 @set next=
-echo v%DEVONE_VERSION%
+echo v%DEVON_VERSION%
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -889,7 +931,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_GenerateCommandStubs
+call :REALBODY_GenerateCommandStubs %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :GenerateCommandStubs
 @setlocal  
 @echo off
@@ -905,9 +949,9 @@ goto :REALBODY_GenerateCommandStubs
 :ArgCheckLoop_GenerateCommandStubs
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_GenerateCommandStubs
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_GenerateCommandStubs
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=GenerateCommandStubs" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -915,7 +959,7 @@ if "%next%" == "" set next=__NONE__
 :Main_GenerateCommandStubs
 @set head=
 @set next=
-call :GetIniPairs %DEVONE_CONFIG_PATH% "alias"
+call :GetIniPairs %DEVON_CONFIG_PATH% "alias"
 (set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
 goto :SubString
 :create_alias_file
@@ -1038,15 +1082,27 @@ function list_hooks_in_dir^
 
     level=^"${2}^"^
 
+    if [ ^"$(expr substr $(uname -s) 1 5)^" == ^"MINGW^" ]; then^
+
+        # mingw dose not have perm mode^
+
+        permcheck=^
+
+    else^
+
+        permcheck=-perm +111^
+
+    fi^
+
     find --help 2^>^&1 ^| grep -- '-L' 2^>/dev/null ^>/dev/null^
 
     if [ $? -eq 1 ] ; then^
 
-        find ^"${path}/^" -mindepth ${level} -maxdepth ${level} -perm +111 -type f 2^>/dev/null ^| grep -v ^"^^^^.$^" ^| sort^
+        find ^"${path}/^" -mindepth ${level} -maxdepth ${level} ${permcheck} -type f 2^>/dev/null ^| grep -v ^"^^^^.$^" ^| sort^
 
     else^
 
-        find -L ^"${path}/^" -mindepth ${level} -maxdepth ${level} -perm +111 -type f 2^>/dev/null ^| grep -v ^"^^^^.$^" ^| sort^
+        find -L ^"${path}/^" -mindepth ${level} -maxdepth ${level} ${permcheck} -type f 2^>/dev/null ^| grep -v ^"^^^^.$^" ^| sort^
 
     fi^
 
@@ -1240,11 +1296,11 @@ function install_hooks^
 
     cmd='#^^!/usr/bin/env bash^
 
-if [ -f ^"$(git rev-parse --git-dir)/.devone^" ]; then^
+if [ -f ^"$(git rev-parse --git-dir)/.devon^" ]; then^
 
 if [ -z ^"${PRJ_ROOT}^" ]; then^
 
-    echo ^"Error, your in devone project, but not use dev-shell^"^
+    echo ^"Error, your in devon project, but not use dev-sh^"^
 
     exit 1^
 
@@ -1276,7 +1332,7 @@ git-hooks run ^"$0^" ^"$@^"';^
 
 ^
 
-function install_global ^
+function install_global^
 
 {^
 
@@ -1314,7 +1370,7 @@ echo \^"git hooks not installed in this repository.  Run 'git hooks --install' t
 
 ^
 
-function uninstall_global ^
+function uninstall_global^
 
 {^
 
@@ -1324,7 +1380,7 @@ function uninstall_global ^
 
 ^
 
-function report_error ^
+function report_error^
 
 {^
 
@@ -1423,165 +1479,6 @@ esac^
 
 echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
 
-set SSHScript=#^^!/usr/bin/env bash^
-
-^
-
-prefix_args=()^
-
-suffix_args=()^
-
-userhost=^
-
-while test ${#} -gt 0^
-
-do^
-
-    arg=$1^
-
-    if [[ ${arg} == -* ]]; then^
-
-        arg=${arg#-}^
-
-        if [[ ^"1246AaCfgKkMNnqsTtVvXxYy^" == *${arg}* ]]; then^
-
-            prefix_args+=(^"-${arg}^")^
-
-            shift^
-
-        else^
-
-            prefix_args+=(^"-${arg}^")^
-
-            prefix_args+=(^"$2^")^
-
-            shift^
-
-            shift^
-
-        fi^
-
-    else^
-
-        userhost=$1^
-
-        shift^
-
-        while test ${#} -gt 0^
-
-        do^
-
-            suffix_args+=(^"$1^")^
-
-            shift^
-
-        done^
-
-    fi^
-
-done^
-
-^
-
-# try to find the username^
-
-IFS='@' read -r -a array ^<^<^< ^"${userhost}^"^
-
-user=${array[0]}^
-
-host=${array[1]}^
-
-if [ ^"${user}^" == ^"git^" ]; then^
-
-    # github arguments: git@github.com git-receive-pack 'ranlempow/git-hooks.git'^
-
-    IFS='/' read -r -a array ^<^<^< ^"${suffix_args[@]: -1}^"^
-
-    user=${array[0]}^
-
-    len=${#suffix_args[@]}^
-
-    suffix_args[${len} - 1]=^"'${suffix_args[${len} - 1]}'^"^
-
-fi^
-
-^
-
-# find the real ssh/scp executable^
-
-program=$(basename ^"$0^")^
-
-if [ ^"${program}^" == ssh ]; then^
-
-    program=ssh^
-
-elif [ ^"${program}^" == scp ]; then^
-
-    program=scp^
-
-else^
-
-    echo unknown program ${program}^
-
-    exit 1^
-
-fi^
-
-^
-
-for _ssh_exec in $(type -ap ${program}); do^
-
-    if [ ${_ssh_exec} -ef $0 ]; then continue; fi^
-
-    ssh_exec=${_ssh_exec}^
-
-done^
-
-if [ -z ${ssh_exec} ]; then^
-
-    echo ssh executable ${ssh_exec} not found^
-
-    exit 1^
-
-fi^
-
-^
-
-# find the key file on the disk^
-
-keypath=~/.ssh/namedkeys/${user}_rsa^
-
-keypath=^"$(cd ^"$(dirname ^"${keypath}^")^"; pwd)/$(basename ^"${keypath}^")^"^
-
-^
-
-# echo ${prefix_args[@]}^
-
-# echo ${user}^
-
-# echo ${host}^
-
-# echo ${suffix_args[@]}^
-
-# echo ${ssh_exec}^
-
-# echo ${keypath}^
-
-^
-
-if [ -f ${keypath} ]; then^
-
-    ${ssh_exec} -i ^"${keypath}^" ${prefix_args[@]} ${userhost} ${suffix_args[@]}^
-
-else^
-
-    ${ssh_exec} ${prefix_args[@]} ${userhost} ${suffix_args[@]}^
-
-fi^
-
-
-echo.!SSHScript! > %PRJ_TMP%\command\ssh
-echo.!SSHScript! > %PRJ_TMP%\command\scp
 
 set GitBashScript=@where git 1^>nul^
 
@@ -1611,41 +1508,8 @@ set GitBashScript=@where git 1^>nul^
 
 
 echo.!GitBashScript! > %PRJ_TMP%\command\bash.cmd
-echo.bash -c ssh %* > %PRJ_TMP%\command\ssh.cmd
-echo.bash -c scp %* > %PRJ_TMP%\command\scp.cmd
+echo.!GitBashScript! > %PRJ_TMP%\command\git-bash.cmd
 
-set BashProfileScript=#^^!/usr/bin/env bash^
-
-^
-
-pre_path=$(sed -r 's^|:\/c\/__dev_setpath:^|^&#^|' ^<^<^< ^"${PATH}^")^
-
-IFS=# read -r -a array ^<^<^< ^"${pre_path}^"^
-
-addition_path=${array[0]}^
-
-origin_path=${array[1]}^
-
-if [ ^^! -z ^"${origin_path}^" ]; then^
-
-    pre_path=$(sed -r 's^|:\/c\/__dev_endpath:^|^&#^|' ^<^<^< ^"${addition_path}^")^
-
-    IFS=# read -r -a array ^<^<^< ^"${pre_path}^"^
-
-    bash_path=${array[0]}^
-
-    devone_path=${array[1]}^
-
-    if [ ^^! -z ^"${origin_path}^" ]; then^
-
-        PATH=${devone_path}${bash_path}${origin_path}^
-
-    fi^
-
-fi^
-
-
-echo.!BashProfileScript! > %HOMEPATH%\.bashrc
 
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
@@ -1655,7 +1519,7 @@ endlocal & (
     set ERROR_CALLSTACK=%ERROR_CALLSTACK%
 )
 goto :eof
-::: function CMD_shell(no_window=N, no_welcom=N) delayedexpansion
+::: function CMD_shell(no_window=N, no_welcome=N) delayedexpansion
 @setlocal  enabledelayedexpansion
 @echo off
 @set ERROR_MSG=
@@ -1663,7 +1527,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_shell
+call :REALBODY_CMD_shell %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_shell
 @setlocal  enabledelayedexpansion
 @echo off
@@ -1676,22 +1542,22 @@ set CALL_STACK=CMD_shell %CALL_STACK%
 goto :REALBODY_CMD_shell
 :REALBODY_CMD_shell
 set no_window=0
-set no_welcom=0
+set no_welcome=0
 
 :ArgCheckLoop_CMD_shell
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_shell
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_shell
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--no-window" @(
     @set no_window=1
     @shift
     @goto :ArgCheckLoop_CMD_shell
 )
-@if "%head%" == "--no-welcom" @(
-    @set no_welcom=1
+@if "%head%" == "--no-welcome" @(
+    @set no_welcome=1
     @shift
     @goto :ArgCheckLoop_CMD_shell
 )
@@ -1702,7 +1568,7 @@ if "%next%" == "" set next=__NONE__
 @set head=
 @set next=
 set CMDSCRIPT=
-set CMDSCRIPT=!CMDSCRIPT!        (set no_window=)^&        (set no_welcom=)^&        (set CMDSCRIPT=)^&        (set CALL_STACK=)^&        (set SCRIPT_FOLDER=)^&        (set SCRIPT_SOURCE=)^&        (set DEVONE_VERSION=)^&        (set _devcmd=)^&        (set _devargs=)^&
+set CMDSCRIPT=!CMDSCRIPT!        (set no_window=)^&        (set no_welcome=)^&        (set CMDSCRIPT=)^&        (set CALL_STACK=)^&        (set SCRIPT_FOLDER=)^&        (set SCRIPT_SOURCE=)^&        (set DEVON_VERSION=)^&        (set _devcmd=)^&        (set _devargs=)^&
 
 
 where ansicon.exe 2>&1 1>nul
@@ -1712,10 +1578,10 @@ if not errorlevel 1 (
 
 where clink.bat 2>&1 1>nul
 if not errorlevel 1 (
-    set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject)^&"
+    set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject 1>nul)^&"
 )
 
-if not "%no_welcom%" == "1" (
+if not "%no_welcome%" == "1" (
     set "CMDSCRIPT=!CMDSCRIPT!(dev welcome)^&"
 )
 set "CMDSCRIPT=!CMDSCRIPT!(call)"
@@ -1746,7 +1612,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_setup
+call :REALBODY_CMD_setup %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_setup
 @setlocal  
 @echo off
@@ -1764,22 +1632,22 @@ set GithubToken=
 :ArgCheckLoop_CMD_setup
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_setup
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_setup
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--username" @(
     @set UserName=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_CMD_setup
 )
 @if "%head%" == "--githubtoken" @(
     @set GithubToken=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=CMD_setup" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_CMD_setup
@@ -1796,7 +1664,7 @@ git rev-parse 1>nul 1>&2
 if errorlevel 1  endlocal & ( set "ERROR_MSG=Not a git repository" & set "ERROR_SOURCE=CMD_setup.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 
 for /f %%i in ('git rev-parse --git-dir') do set GitDir=%%i
-if exist "%GitDir%/.devone" (
+if exist "%GitDir%/.devon" (
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -1839,8 +1707,8 @@ if not "%UserName%" == "global" (
 git config --local core.autocrlf true
 git config --local push.default simple
 
-git hooks --install
-echo. > "%GitDir%/.devone"
+
+echo. > "%GitDir%/.devon"
 
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
@@ -1860,7 +1728,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_sync
+call :REALBODY_CMD_sync %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_sync
 @setlocal  enabledelayedexpansion
 @echo off
@@ -1877,9 +1747,9 @@ set MOST_CLEAN=0
 :ArgCheckLoop_CMD_sync
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_sync
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_sync
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--most-clean" @(
     @set MOST_CLEAN=1
@@ -1977,7 +1847,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_PreparePrint
+call :REALBODY_PreparePrint %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :PreparePrint
 @setlocal  
 @echo off
@@ -1990,18 +1862,18 @@ set CALL_STACK=PreparePrint %CALL_STACK%
 goto :REALBODY_PreparePrint
 :REALBODY_PreparePrint
 set PRINT_LEVEL=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PRINT_LEVEL" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PreparePrint" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PRINT_LEVEL%" == "" endlocal & ( set "ERROR_MSG=Need argument PRINT_LEVEL" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PreparePrint" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set MSG_TITLE=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument MSG_TITLE" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PreparePrint" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%MSG_TITLE%" == "" endlocal & ( set "ERROR_MSG=Need argument MSG_TITLE" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PreparePrint" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_PreparePrint
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_PreparePrint
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_PreparePrint
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PreparePrint" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2051,7 +1923,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_PrintMsg
+call :REALBODY_PrintMsg %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :PrintMsg
 @setlocal  
 @echo off
@@ -2064,19 +1938,19 @@ set CALL_STACK=PrintMsg %CALL_STACK%
 goto :REALBODY_PrintMsg
 :REALBODY_PrintMsg
 set PRINT_LEVEL=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PRINT_LEVEL" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintMsg" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PRINT_LEVEL%" == "" endlocal & ( set "ERROR_MSG=Need argument PRINT_LEVEL" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintMsg" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set MSG_TITLE=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument MSG_TITLE" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintMsg" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%MSG_TITLE%" == "" endlocal & ( set "ERROR_MSG=Need argument MSG_TITLE" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintMsg" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set MSG_BODY=
 
 :ArgCheckLoop_PrintMsg
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_PrintMsg
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_PrintMsg
+if x%2x == xx set next=__NONE__
 
 @goto :GetRestArgs_PrintMsg
 
@@ -2121,7 +1995,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_PrintVersion
+call :REALBODY_PrintVersion %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :PrintVersion
 @setlocal  
 @echo off
@@ -2134,30 +2010,30 @@ set CALL_STACK=PrintVersion %CALL_STACK%
 goto :REALBODY_PrintVersion
 :REALBODY_PrintVersion
 set PRINT_LEVEL=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PRINT_LEVEL" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PRINT_LEVEL%" == "" endlocal & ( set "ERROR_MSG=Need argument PRINT_LEVEL" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set MSG_TITLE=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument MSG_TITLE" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%MSG_TITLE%" == "" endlocal & ( set "ERROR_MSG=Need argument MSG_TITLE" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set PV_APP=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PV_APP" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PV_APP%" == "" endlocal & ( set "ERROR_MSG=Need argument PV_APP" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set PV_VER=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PV_VER" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PV_VER%" == "" endlocal & ( set "ERROR_MSG=Need argument PV_VER" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set PV_ARCH=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PV_ARCH" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PV_ARCH%" == "" endlocal & ( set "ERROR_MSG=Need argument PV_ARCH" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set PV_PATCHES=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument PV_PATCHES" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%PV_PATCHES%" == "" endlocal & ( set "ERROR_MSG=Need argument PV_PATCHES" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_PrintVersion
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_PrintVersion
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_PrintVersion
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2189,7 +2065,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_PrintTaskInfo
+call :REALBODY_PrintTaskInfo %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :PrintTaskInfo
 @setlocal  
 @echo off
@@ -2205,9 +2083,9 @@ goto :REALBODY_PrintTaskInfo
 :ArgCheckLoop_PrintTaskInfo
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_PrintTaskInfo
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_PrintTaskInfo
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=print.cmd" & set "ERROR_BLOCK=PrintTaskInfo" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2278,7 +2156,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_MakeColorTable
+call :REALBODY_MakeColorTable %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :MakeColorTable
 @setlocal  enabledelayedexpansion
 @echo off
@@ -2291,15 +2171,15 @@ set CALL_STACK=MakeColorTable %CALL_STACK%
 goto :REALBODY_MakeColorTable
 :REALBODY_MakeColorTable
 set ColorTable=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument ColorTable" & set "ERROR_SOURCE=color.cmd" & set "ERROR_BLOCK=MakeColorTable" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%ColorTable%" == "" endlocal & ( set "ERROR_MSG=Need argument ColorTable" & set "ERROR_SOURCE=color.cmd" & set "ERROR_BLOCK=MakeColorTable" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_MakeColorTable
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_MakeColorTable
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_MakeColorTable
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=color.cmd" & set "ERROR_BLOCK=MakeColorTable" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2357,7 +2237,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_update
+call :REALBODY_CMD_update %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_update
 @setlocal  
 @echo off
@@ -2373,9 +2255,9 @@ goto :REALBODY_CMD_update
 :ArgCheckLoop_CMD_update
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_update
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_update
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=CMD_update.cmd" & set "ERROR_BLOCK=CMD_update" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2386,33 +2268,79 @@ if "%next%" == "" set next=__NONE__
 
 
 
-for %%F in ("applypatch-msg"
-            "pre-applypatch"
-            "post-applypatch"
-            "pre-commit"
-            "prepare-commit-msg"
-            "commit-msg"
-            "post-commit"
-            "pre-rebase"
-            "post-checkout"
-            "post-merge"
-            "pre-push"
-            "pre-receive"
-            "update"
-            "post-receive"
-            "post-update"
-            "push-to-checkout"
-            "pre-auto-gc"
-            "post-rewrite") do (
-    if exist "%PRJ_CONF%\hooks\%%~F" copy /Y "%PRJ_CONF%\hooks\%%~F" "%PRJ_ROOT%\.git\hooks\%%~F"
-)
-
-
-
+set inival=
+call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
+if not "%inival%" == "" set specs=%inival:;= %
 
 if exist "%PRJ_CONF%\hooks\update.cmd" (
     call "%PRJ_CONF%\hooks\update.cmd"
 )
+
+endlocal & (
+    set ERROR_MSG=%ERROR_MSG%
+    set ERROR_SOURCE=%ERROR_SOURCE%
+    set ERROR_BLOCK=%ERROR_BLOCK%
+    set ERROR_LINENO=%ERROR_LINENO%
+    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
+)
+goto :eof
+
+::: function CMD_bootstrap(git_remote)
+@setlocal  
+@echo off
+@set ERROR_MSG=
+@set ERROR_SOURCE=
+@set ERROR_BLOCK=
+@set ERROR_LINENO=
+@set ERROR_CALLSTACK=
+call :REALBODY_CMD_bootstrap %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
+:CMD_bootstrap
+@setlocal  
+@echo off
+@set ERROR_MSG=
+@set ERROR_SOURCE=
+@set ERROR_BLOCK=
+@set ERROR_LINENO=
+@set ERROR_CALLSTACK=
+set CALL_STACK=CMD_bootstrap %CALL_STACK%
+goto :REALBODY_CMD_bootstrap
+:REALBODY_CMD_bootstrap
+set git_remote=%~1
+if "%git_remote%" == "" endlocal & ( set "ERROR_MSG=Need argument git_remote" & set "ERROR_SOURCE=CMD_update.cmd" & set "ERROR_BLOCK=CMD_bootstrap" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+shift
+
+:ArgCheckLoop_CMD_bootstrap
+set head=%~1
+set next=%~2
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_bootstrap
+if x%2x == xx set next=__NONE__
+
+
+ endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=CMD_update.cmd" & set "ERROR_BLOCK=CMD_bootstrap" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+:GetRestArgs_CMD_bootstrap
+:Main_CMD_bootstrap
+@set head=
+@set next=
+call :EnterPostScript
+call :brickv_CMD_Update "git=2.x" --vv
+call :ExecutePostScript
+
+git clone %git_remote% > "%TEMP%\git-clone-stdout.txt"
+if errorlevel 1  endlocal & ( set "ERROR_MSG=git clone failed" & set "ERROR_SOURCE=CMD_update.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+for /F "tokens=1-3 usebackq" %%A IN ("%TEMP%\git-clone-stdout.txt") do (
+    if "%%A" == "Cloning" if "%%B" == "into" set ProjectRoot=%%C
+)
+set ProjectRoot=%ProjectRoot:~1, -4%
+echo %ProjectRoot%
+
+if not exist "%ProjectRoot%\dev-sh.cmd"  endlocal & ( set "ERROR_MSG=project not exist" & set "ERROR_SOURCE=CMD_update.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+call "%ProjectRoot%\dev-sh.cmd" init
+call "%ProjectRoot%\dev-sh.cmd" update
+call "%ProjectRoot%\dev-sh.cmd" shell
+
 
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
@@ -2432,7 +2360,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_clear
+call :REALBODY_CMD_clear %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_clear
 @setlocal  
 @echo off
@@ -2448,9 +2378,9 @@ goto :REALBODY_CMD_clear
 :ArgCheckLoop_CMD_clear
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_clear
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_clear
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=CMD_clear.cmd" & set "ERROR_BLOCK=CMD_clear" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2463,11 +2393,11 @@ if "%next%" == "" set next=__NONE__
 
 
 set inival=
-call :GetIniArray DEVONE_CONFIG_PATH "clear"
+call :GetIniArray DEVON_CONFIG_PATH "clear"
 (set Text=!inival!)&(set LoopCb=:clear_prject)&(set ExitCb=:exit_clear_prject)&(set Spliter=;)
 goto :SubString
 :clear_prject
-    if exist "!PRJ_ROOT!\!substring!" call del "!PRJ_ROOT!\!substring!"
+    if not "!substring!" == "" if exist "!PRJ_ROOT!\!substring!" call del "!PRJ_ROOT!\!substring!"
     goto :NextSubString
 :exit_clear_prject
 set inival=
@@ -2488,7 +2418,7 @@ goto :eof
 
 
 
-::: function brickv_CMD_install(args=...) delayedexpansion
+::: function brickv_CMD_install(ONLY_VERSIONS=N, args=....) delayedexpansion
 @setlocal  enabledelayedexpansion
 @echo off
 @set ERROR_MSG=
@@ -2496,7 +2426,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_brickv_CMD_install
+call :REALBODY_brickv_CMD_install %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :brickv_CMD_install
 @setlocal  enabledelayedexpansion
 @echo off
@@ -2508,30 +2440,35 @@ goto :REALBODY_brickv_CMD_install
 set CALL_STACK=brickv_CMD_install %CALL_STACK%
 goto :REALBODY_brickv_CMD_install
 :REALBODY_brickv_CMD_install
+set ONLY_VERSIONS=0
 set args=
 
 :ArgCheckLoop_brickv_CMD_install
 set head=%~1
 set next=%~2
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_brickv_CMD_install
+if x%2x == xx set next=__NONE__
 
-if "%head%" == "" goto :GetRestArgs_brickv_CMD_install
-if "%next%" == "" set next=__NONE__
-
+@if "%head%" == "--only-versions" @(
+    @set ONLY_VERSIONS=1
+    @shift
+    @goto :ArgCheckLoop_brickv_CMD_install
+)
 @goto :GetRestArgs_brickv_CMD_install
 
 :GetRestArgs_brickv_CMD_install
 
-@set args="%~1"
+@set args=%1
 @shift
 :GetRestArgsLoop_brickv_CMD_install
 @if "%~1" == "" @goto :Main_brickv_CMD_install
-@set args=%args% "%~1"
+@set args=%args% %1
 @shift
 @goto :GetRestArgsLoop_brickv_CMD_install
 :Main_brickv_CMD_install
 @set head=
 @set next=
-
 
 set ACCEPT=1
 
@@ -2546,9 +2483,10 @@ if "%LabelExists%" == "1" (
      endlocal & ( set "ERROR_MSG=%APPNAME% not in installable list" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 )
 
-
+if not "%PRJ_TMP%" == "" set TEMP=%PRJ_TMP%
 set VERSION_SOURCE_FILE=%TEMP%\source_%APPNAME%.ver.txt
 set VERSION_SPCES_FILE=%TEMP%\spces-%APPNAME%.ver.txt
+
 if exist "%VERSION_SOURCE_FILE%" del "%VERSION_SOURCE_FILE%" >nul
 copy /y NUL "%VERSION_SOURCE_FILE%" >NUL
 if exist "%VERSION_SPCES_FILE%" del "%VERSION_SPCES_FILE%" >nul
@@ -2557,6 +2495,18 @@ copy /y NUL "%VERSION_SPCES_FILE%" >NUL
 call :ExistsLabel %APPNAME%_versions
 if "%LabelExists%" == "1" call :%APPNAME%_versions
 if exist "%RELEASE_URL%" call :BrickvDownload "%RELEASE_URL%" "%VERSION_SPCES_FILE%"
+if "%ONLY_VERSIONS%" == "1" (
+endlocal & (
+    set VERSION_SPCES_FILE=%VERSION_SPCES_FILE%
+    set ERROR_MSG=%ERROR_MSG%
+    set ERROR_SOURCE=%ERROR_SOURCE%
+    set ERROR_BLOCK=%ERROR_BLOCK%
+    set ERROR_LINENO=%ERROR_LINENO%
+    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
+)
+goto :eof
+)
+
 if exist "%VERSION_SPCES_FILE%" (
     call :MatchVersion --output-format env --spec-match "%REQUEST_SPEC%" --specs-file "%VERSION_SPCES_FILE%"
             if not "!ERROR_MSG!" == "" goto :brickv_CMD_install_Error
@@ -2579,8 +2529,11 @@ if not "%DOWNLOAD_URL%" == "" if "%INSTALLER%" == "" call :FilenameFromUrl "%DOW
 if not "%DOWNLOAD_URL%" == "" if "%INSTALLER%" == "" set INSTALLER=%TEMP%\%Filename%
 set Filename=
 call :PrintTaskInfo
+if "%DRYRUN%" == "1" goto :BrickvInstallFinal
 
-if not "%DOWNLOAD_URL%" == "" call :BrickvDownload "%DOWNLOAD_URL%" "%INSTALLER%"
+if not "%DOWNLOAD_URL%" == "" (
+    call :BrickvDownload "%DOWNLOAD_URL%" "%INSTALLER%" --skip-exists
+)
         if not "%ERROR_MSG%" == "" goto :brickv_CMD_install_Error
 
 call :ExistsLabel %APPNAME%_unpack
@@ -2608,18 +2561,20 @@ call :BrickvGenEnv "%TARGET%" "%SETENV%"
 
 call :BrickvValidate
 if not "%ERROR_MSG%" == "" (
-    call :PrintMsg warning validate error: %ERROR_MSG%
+    call :PrintMsg warning warning validate error: %ERROR_MSG%
 ) else (
     call :PrintMsg noraml validate succeed
 )
 
-
+:BrickvInstallFinal
 set ERROR_MSG=
 call :BrickvDone
 if not "%ERROR_MSG%" == "" if "%CALL_STACK%" == "" goto :_Error
 if not "%ERROR_MSG%" == ""  endlocal & ( set "ERROR_MSG=%ERROR_MSG%" & set "ERROR_SOURCE=%ERROR_SOURCE%" & set "ERROR_BLOCK=%ERROR_BLOCK%" & set "ERROR_LINENO=%ERROR_LINENO%" & set "ERROR_CALLSTACK=%ERROR_CALLSTACK%" & goto :eof )
 cmd /C exit /b 0
 endlocal & (
+    set DRYRUN=%DRYRUN%
+    set REQUEST_NAME=%REQUEST_NAME%
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
     set ERROR_BLOCK=%ERROR_BLOCK%
@@ -2652,7 +2607,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvValidate
+call :REALBODY_BrickvValidate %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvValidate
 @setlocal  enabledelayedexpansion
 @echo off
@@ -2668,9 +2625,9 @@ goto :REALBODY_BrickvValidate
 :ArgCheckLoop_BrickvValidate
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvValidate
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvValidate
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=BrickvValidate" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -2682,8 +2639,8 @@ call "%TARGET%\set-env.cmd" --validate --quiet
 
 if errorlevel 1  endlocal & ( set "ERROR_MSG=self validate failed" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 
-if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_SOURCE%\%CHECK_EXIST%" (
-     endlocal & ( set "ERROR_MSG=exist validate failed %SCRIPT_SOURCE%\%CHECK_EXIST%" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_FOLDER%\%CHECK_EXIST%" (
+     endlocal & ( set "ERROR_MSG=exist validate failed %SCRIPT_FOLDER%\%CHECK_EXIST%" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 )
 
 if "%CHECK_LINEWORD%" == "" if "%CHECK_OK%" == "" (
@@ -2713,7 +2670,7 @@ if "%CHECK_LINEWORD%" == "" (
 ) else (
     for /F "tokens=* USEBACKQ" %%F in (`cmd /C %CHECK_CMD% ^| findstr %CHECK_LINEWORD%`) do @set CHECK_STRING=%%F
 )
-if not "%CHECK_STRING%" == "%CHECK_OK%"  endlocal & ( set "ERROR_MSG=validate failed not match %CHECK_STRING% != %CHECK_OK%" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "!CHECK_STRING:%CHECK_OK%=!" == "%CHECK_STRING%"  endlocal & ( set "ERROR_MSG=validate failed not match %CHECK_STRING% != %CHECK_OK%" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -2731,8 +2688,6 @@ endlocal & (
     set ERROR_CALLSTACK=%ERROR_CALLSTACK%
 )
 goto :eof
-
-
 
 
 :ExistsLabel
@@ -2747,7 +2702,7 @@ goto :eof
 :::                            name=?, targetdir=?,
 :::                            system=N, global=N, local=N,
 :::                            dry=N, force=N, check_only=N, no_check=N, no_color=N,
-:::                            silent=N, quiet=N, v=N, vv=N, vvv=N,
+:::                            silent=N, quiet=N, v=N, vv=N, vvv=N, allow_empty_location=N,
 :::                            REST_ARGS_PRINT=....)
 @setlocal  
 @echo off
@@ -2756,7 +2711,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvPrepare
+call :REALBODY_BrickvPrepare %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvPrepare
 @setlocal  
 @echo off
@@ -2788,67 +2745,68 @@ set quiet=0
 set v=0
 set vv=0
 set vvv=0
+set allow_empty_location=0
 set REST_ARGS_PRINT=
 
 :ArgCheckLoop_BrickvPrepare
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvPrepare
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvPrepare
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--spec" @(
     @set spec=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
 @if "%head%" == "--app" @(
     @set app=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
 @if "%head%" == "--ver" @(
     @set ver=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
 @if "%head%" == "--patches" @(
     @set patches=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
 @if "%head%" == "--arch" @(
     @set arch=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
 @if "%head%" == "--name" @(
     @set name=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
 @if "%head%" == "--targetdir" @(
     @set targetdir=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
@@ -2918,6 +2876,11 @@ if "%next%" == "" set next=__NONE__
     @shift
     @goto :ArgCheckLoop_BrickvPrepare
 )
+@if "%head%" == "--allow-empty-location" @(
+    @set allow_empty_location=1
+    @shift
+    @goto :ArgCheckLoop_BrickvPrepare
+)
 @goto :GetRestArgs_BrickvPrepare
 
 :GetRestArgs_BrickvPrepare
@@ -2947,14 +2910,13 @@ if "%REQUEST_ARCH%" == "" (
     )
 )
 
-set REQUEST_LOCATION=global
+if not "%allow_empty_location%" == "1" set REQUEST_LOCATION=global
 if "%system%" == "1" set REQUEST_LOCATION=system
 if "%global%" == "1" set REQUEST_LOCATION=global
 if "%local%" == "1" set REQUEST_LOCATION=local
 
-set LOCAL_DIR=%LOCALAPPDATA%\Programs
-set GLOBAL_DIR=%PRJ_BIN%
-
+set GLOBAL_DIR=%LOCALAPPDATA%\Programs
+set LOCAL_DIR=%PRJ_BIN%
 
 set REQUEST_NAME=%name%
 set REQUEST_TARGETDIR=%targetdir%
@@ -3006,7 +2968,9 @@ if not "%REQUEST_SPEC%" == "" (
 )
 set REQUEST_SPEC=%REQUEST_APP%=%REQUEST_VER%@%REQUEST_ARCH%[%REQUEST_PATCHES%]
 
-call :PrintVersion info request "%REQUEST_APP%" "%REQUEST_VER%" "%REQUEST_ARCH%" "%REQUEST_PATCHES%"
+if not "%REQUEST_APP%" == "" (
+  call :PrintVersion info request "%REQUEST_APP%" "%REQUEST_VER%" "%REQUEST_ARCH%" "%REQUEST_PATCHES%"
+)
 endlocal & (
     set DRYRUN=%DRYRUN%
     set FORCE=%FORCE%
@@ -3058,7 +3022,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_MatchVersion
+call :REALBODY_MatchVersion %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :MatchVersion
 @setlocal  enabledelayedexpansion
 @echo off
@@ -3081,9 +3047,9 @@ set specs_string=
 :ArgCheckLoop_MatchVersion
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_MatchVersion
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_MatchVersion
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--default-args" @(
     @set default_args=1
@@ -3092,16 +3058,16 @@ if "%next%" == "" set next=__NONE__
 )
 @if "%head%" == "--specs-file" @(
     @set specs_file=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_MatchVersion
 )
 @if "%head%" == "--spec-match" @(
     @set spec_match=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_MatchVersion
@@ -3113,16 +3079,16 @@ if "%next%" == "" set next=__NONE__
 )
 @if "%head%" == "--output-format" @(
     @set output_format=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_MatchVersion
 )
 @if "%head%" == "--output" @(
     @set output=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=semver.cmd" & set "ERROR_BLOCK=MatchVersion" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_MatchVersion
@@ -3386,7 +3352,15 @@ function SelectVersion {^
 
     } else {^
 
-        $specsOutput^
+        # because Write-Output to pipe that breaks lines to fit console^
+
+        # instead we use Write-Host to prevent this issue^
+
+        # notice:^
+
+        #   Write-Host output '\n' new line character rather than '\r\n'^
+
+        $specsOutput ^| ForEach-Object { Write-Host $_ }^
 
     }^
 
@@ -3396,19 +3370,19 @@ function SelectVersion {^
 
 function Test {^
 
-    $specsString = 'app2=3.1.X@x86[a,b] app2=2.1.X@x86[a,b]'^
+    # $specsString = 'app2=3.1.X@x86[a,b] app2=2.1.X@x86[a,b]'^
 
-    $specsStrings = @(' app1=3.1.X@x86[a, b] ', 'app1=2.1.X@x86[a, b] ', '  ')^
+    # $specsStrings = @(' app1=3.1.X@x86[a, b] ', 'app1=2.1.X@x86[a, b] ', '  ')^
 
-    # $specsFile = 'C:\Users\ran\Desktop\brickv\base\verlist.txt'^
+    $specsFile = 'C:\Users\ran\Desktop\brickv\var\tmp\spces-git.ver.txt'^
 
-    $specMatch = 'app2=3'^
+    $specMatch = 'git=2.10@any[ssh-stab]'^
 
     $outputFormat = 'cmd'^
 
     $output = ''^
 
-    $bestMatch = 0^
+    $bestMatch = 1^
 
 }^
 
@@ -3520,7 +3494,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_Unzip
+call :REALBODY_Unzip %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :Unzip
 @setlocal  enabledelayedexpansion
 @echo off
@@ -3533,19 +3509,19 @@ set CALL_STACK=Unzip %CALL_STACK%
 goto :REALBODY_Unzip
 :REALBODY_Unzip
 set ZipFile=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument ZipFile" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=Unzip" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%ZipFile%" == "" endlocal & ( set "ERROR_MSG=Need argument ZipFile" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=Unzip" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set ExtractTo=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument ExtractTo" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=Unzip" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%ExtractTo%" == "" endlocal & ( set "ERROR_MSG=Need argument ExtractTo" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=Unzip" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set delete_before=0
 
 :ArgCheckLoop_Unzip
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_Unzip
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_Unzip
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--delete-before" @(
     @set delete_before=1
@@ -3632,7 +3608,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_MoveFile
+call :REALBODY_MoveFile %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :MoveFile
 @setlocal  
 @echo off
@@ -3645,18 +3623,18 @@ set CALL_STACK=MoveFile %CALL_STACK%
 goto :REALBODY_MoveFile
 :REALBODY_MoveFile
 set SRC=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument SRC" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=MoveFile" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%SRC%" == "" endlocal & ( set "ERROR_MSG=Need argument SRC" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=MoveFile" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set DST=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument DST" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=MoveFile" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%DST%" == "" endlocal & ( set "ERROR_MSG=Need argument DST" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=MoveFile" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_MoveFile
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_MoveFile
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_MoveFile
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=MoveFile" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -3687,7 +3665,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_FilenameFromUrl
+call :REALBODY_FilenameFromUrl %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :FilenameFromUrl
 @setlocal  
 @echo off
@@ -3700,15 +3680,15 @@ set CALL_STACK=FilenameFromUrl %CALL_STACK%
 goto :REALBODY_FilenameFromUrl
 :REALBODY_FilenameFromUrl
 set Url=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument Url" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=FilenameFromUrl" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%Url%" == "" endlocal & ( set "ERROR_MSG=Need argument Url" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=FilenameFromUrl" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_FilenameFromUrl
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_FilenameFromUrl
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_FilenameFromUrl
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=FilenameFromUrl" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -3745,7 +3725,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvBeforeInstall
+call :REALBODY_BrickvBeforeInstall %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvBeforeInstall
 @setlocal  
 @echo off
@@ -3761,9 +3743,9 @@ goto :REALBODY_BrickvBeforeInstall
 :ArgCheckLoop_BrickvBeforeInstall
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvBeforeInstall
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvBeforeInstall
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=BrickvBeforeInstall" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -3778,8 +3760,8 @@ if "%next%" == "" set next=__NONE__
     if not "%REQUEST_NAME%" == "" set TARGET_NAME=%REQUEST_NAME%
 
     if not "%REQUEST_TARGETDIR%" == "" set TARGETDIR=%REQUEST_TARGETDIR%
-    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "global" set TARGETDIR=%LOCALAPPDATA%\brickv\apps
-    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "local" set TARGETDIR=%PRJ_BIN%
+    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "global" set TARGETDIR=%GLOBAL_DIR%
+    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "local" set TARGETDIR=%LOCAL_DIR%
 
     if not "%TARGET%" == "" for /f %%i in ("%TARGET%\..") do set TARGETDIR=%%~fi
     if not "%TARGET%" == "" for /f %%i in ("%TARGET%") do set TARGET_NAME=%%~ni
@@ -3831,7 +3813,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvDone
+call :REALBODY_BrickvDone %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvDone
 @setlocal  
 @echo off
@@ -3847,9 +3831,9 @@ goto :REALBODY_BrickvDone
 :ArgCheckLoop_BrickvDone
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvDone
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvDone
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=BrickvDone" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -3900,7 +3884,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvValidate
+call :REALBODY_BrickvValidate %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvValidate
 @setlocal  
 @echo off
@@ -3916,9 +3902,9 @@ goto :REALBODY_BrickvValidate
 :ArgCheckLoop_BrickvValidate
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvValidate
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvValidate
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_utils.cmd" & set "ERROR_BLOCK=BrickvValidate" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -3954,7 +3940,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvGenEnv
+call :REALBODY_BrickvGenEnv %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvGenEnv
 @setlocal  enabledelayedexpansion
 @echo off
@@ -3967,7 +3955,7 @@ set CALL_STACK=BrickvGenEnv %CALL_STACK%
 goto :REALBODY_BrickvGenEnv
 :REALBODY_BrickvGenEnv
 set TARGET=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument TARGET" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=BrickvGenEnv" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%TARGET%" == "" endlocal & ( set "ERROR_MSG=Need argument TARGET" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=BrickvGenEnv" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set test=%~1
 if not "%test:~0,1%" == "-" (
@@ -3979,9 +3967,9 @@ set test=
 :ArgCheckLoop_BrickvGenEnv
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvGenEnv
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvGenEnv
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=BrickvGenEnv" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -4043,7 +4031,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_WriteText
+call :REALBODY_WriteText %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :WriteText
 @setlocal  enabledelayedexpansion
 @echo off
@@ -4056,19 +4046,19 @@ set CALL_STACK=WriteText %CALL_STACK%
 goto :REALBODY_WriteText
 :REALBODY_WriteText
 set VarName=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument VarName" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteText" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%VarName%" == "" endlocal & ( set "ERROR_MSG=Need argument VarName" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteText" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set TargetFile=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument TargetFile" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteText" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%TargetFile%" == "" endlocal & ( set "ERROR_MSG=Need argument TargetFile" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteText" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set Append=0
 
 :ArgCheckLoop_WriteText
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_WriteText
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_WriteText
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--append" @(
     @set Append=1
@@ -4106,7 +4096,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_WriteScript
+call :REALBODY_WriteScript %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :WriteScript
 @setlocal  
 @echo off
@@ -4119,15 +4111,15 @@ set CALL_STACK=WriteScript %CALL_STACK%
 goto :REALBODY_WriteScript
 :REALBODY_WriteScript
 set VarName=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument VarName" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteScript" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%VarName%" == "" endlocal & ( set "ERROR_MSG=Need argument VarName" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteScript" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 
 :ArgCheckLoop_WriteScript
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_WriteScript
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_WriteScript
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_genenv.cmd" & set "ERROR_BLOCK=WriteScript" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -4220,7 +4212,7 @@ goto :eof
 :GenEnvInlines
 set SetEnvBeginTemplate=^
 
-@if not ^"%%SCRIPT_SOURCE%%^" == ^"^" set _OLD_SCRIPT_SOURCE=%%SCRIPT_SOURCE%%^
+@if not ^"%%SCRIPT_FOLDER%%^" == ^"^" set _OLD_SCRIPT_FOLDER=%%SCRIPT_FOLDER%%^
 
 @if not ^"%%SETENV_PATH%%^" == ^"^" set _OLD_SETENV_PATH=%%SETENV_PATH%%^
 
@@ -4232,9 +4224,9 @@ set SetEnvBeginTemplate=^
 
 ^
 
-@set SCRIPT_SOURCE=%%~dp0^
+@set SCRIPT_FOLDER=%%~dp0^
 
-@if ^"%%SCRIPT_SOURCE:~-1%%^"==^"\^" @set SCRIPT_SOURCE=%%SCRIPT_SOURCE:~0,-1%%^
+@if ^"%%SCRIPT_FOLDER:~-1%%^"==^"\^" @set SCRIPT_FOLDER=%%SCRIPT_FOLDER:~0,-1%%^
 
 @set SETENV_PATH=%%~0^
 
@@ -4297,12 +4289,12 @@ set SetEnvSetTemplate=:SetEnv^
 
 @if not ^"%%VA_${APPNAME}_BASE%%^" == ^"^" @call %%VA_${APPNAME}_BASE%%\set-env.cmd --clear^
 
-@set VA_${APPNAME}_BASE=%%SCRIPT_SOURCE%%
+@set VA_${APPNAME}_BASE=%%SCRIPT_FOLDER%%
 
 
 set SetEnvClearTemplate=:ClearEnv^
 
-@if not ^"%%VA_${APPNAME}_BASE%%^" == ^"%%SCRIPT_SOURCE%%^" @goto :eof^
+@if not ^"%%VA_${APPNAME}_BASE%%^" == ^"%%SCRIPT_FOLDER%%^" @goto :eof^
 
 @set VA_${APPNAME}_BASE=
 set SetEnvValidateTemplate=^
@@ -4367,13 +4359,25 @@ set SetEnvEndTemplate=:Quit^
 
 @set VA_INFO_VERSION=%%_OLD_VA_INFO_VERSION%%^
 
+@set _OLD_VA_INFO_APPNAME=^
+
+@set _OLD_VA_INFO_VERSION=^
+
+^
+
 :QuitInfo^
 
-@set SCRIPT_SOURCE=%%_OLD_SCRIPT_SOURCE%%^
+@set SCRIPT_FOLDER=%%_OLD_SCRIPT_FOLDER%%^
 
 @set SETENV_PATH=%%_OLD_SETENV_PATH%%^
 
 @set QUIET=%%_OLD_QUIET%%^
+
+@set _OLD_SCRIPT_FOLDER=^
+
+@set _OLD_SETENV_PATH=^
+
+@set _OLD_QUIET=^
 
 @if ^"%%FAILED%%^" == ^"1^" (@set FAILED=) ^& (@cmd /C exit /b 1) ^& (@goto :eof)^
 
@@ -4389,7 +4393,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_BrickvDownload
+call :REALBODY_BrickvDownload %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :BrickvDownload
 @setlocal  enabledelayedexpansion
 @echo off
@@ -4402,10 +4408,10 @@ set CALL_STACK=BrickvDownload %CALL_STACK%
 goto :REALBODY_BrickvDownload
 :REALBODY_BrickvDownload
 set Url=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument Url" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%Url%" == "" endlocal & ( set "ERROR_MSG=Need argument Url" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set Output=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument Output" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%Output%" == "" endlocal & ( set "ERROR_MSG=Need argument Output" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set Cookie=
 set skip_exists=0
@@ -4413,14 +4419,14 @@ set skip_exists=0
 :ArgCheckLoop_BrickvDownload
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_BrickvDownload
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_BrickvDownload
+if x%2x == xx set next=__NONE__
 
 @if "%head%" == "--cookie" @(
     @set Cookie=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_download.cmd" & set "ERROR_BLOCK=BrickvDownload" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_BrickvDownload
@@ -4436,7 +4442,7 @@ if "%next%" == "" set next=__NONE__
 :Main_BrickvDownload
 @set head=
 @set next=
-if "%FORCE%" == ""  if "%skip_exists%" == "1" set SkipExists=1
+if not "%FORCE%" == "1"  if "%skip_exists%" == "1" set SkipExists=1
 
 set err=
 set ErrorFile=%TEMP%\download_error
@@ -4581,7 +4587,6 @@ goto :eof
 
 :gradle_init
 	set _RELEASE_URL=https://services.gradle.org/distributions
-	set DOWNLOAD_URL=%RELEASE_URL%
 	set ACCEPT=local global
     goto :eof
 
@@ -4605,7 +4610,7 @@ goto :eof
 	goto :eof
 
 :gradle_unpack
-	set SETENV=%SETENV%;GRADLE_HOME:$SCRIPT_SOURCE$
+	set SETENV=%SETENV%;GRADLE_HOME:$SCRIPT_FOLDER$
 	set SETENV=%SETENV%;$GRADLE_HOME$\bin
 	set UNPACK_METHOD=unzip
 	goto :eof
@@ -4617,8 +4622,302 @@ goto :eof
 	set CHECK_OK=Gradle %%VA_INFO_VERSION%%
 	goto:eof
 
+:git_init
+    set _RELEASE_URL=https://api.github.com/repos/git-for-windows/git/releases
+    set ACCEPT=local global
+    goto :eof
 
-::: function brickv_CMD_list(args=...) delayedexpansion
+:git_versions
+    set "regex=browser_download_url.*PortableGit-[0-9]*\.[0-9]*\.[0-9]*-%GIT_ARCH%"
+    FOR /L %%G IN (1,1,2) DO (
+        call :BrickvDownload "%_RELEASE_URL%?page=%%G" "%VERSION_SOURCE_FILE%"
+        if not "%ERROR_MSG%" == "" if "%CALL_STACK%" == "" goto :_Error
+        if not "%ERROR_MSG%" == ""  endlocal & ( set "ERROR_MSG=%ERROR_MSG%" & set "ERROR_SOURCE=%ERROR_SOURCE%" & set "ERROR_BLOCK=%ERROR_BLOCK%" & set "ERROR_LINENO=%ERROR_LINENO%" & set "ERROR_CALLSTACK=%ERROR_CALLSTACK%" & goto :eof )
+        FOR /F "tokens=* USEBACKQ" %%F IN (
+                `FINDSTR  /R /C:"%regex%" %VERSION_SOURCE_FILE%`) DO (
+            for /F "delims=: tokens=3" %%P in ("%%F") do (
+                set SFX_URL=https:%%P
+            )
+
+            for /F "delims=/ tokens=8" %%P in ("!SFX_URL!") do (
+                set SFX_NAME=%%P
+            )
+            for /F "delims=- tokens=2,3" %%A in ("!SFX_NAME!") do (
+                set GIT_VER=%%A
+                set GIT_ARCH=%%B
+            )
+            if "!GIT_ARCH!" == "32" set GIT_ARCH=x86
+            if "!GIT_ARCH!" == "64" set GIT_ARCH=x64
+            echo.git=!GIT_VER!@!GIT_ARCH![.]$!SFX_URL:~0,-1!>> "%VERSION_SPCES_FILE%"
+            echo.git=!GIT_VER!@!GIT_ARCH![ssh-stab]$!SFX_URL:~0,-1!>> "%VERSION_SPCES_FILE%"
+
+        )
+    )
+    goto :eof
+
+:git_prepare
+    set APPVER=%MATCH_VER%
+    if "%REQUEST_NAME%" == "" set REQUEST_NAME=git-%APPVER%-%MATCH_ARCH%
+    set DOWNLOAD_URL=%MATCH_CARRY%
+    goto :eof
+
+:git_unpack
+    set SETENV=%SETENV%;$SCRIPT_FOLDER$\cmd
+    "%INSTALLER%" -y -InstallPath="%TARGET%"
+    if errorlevel 1  endlocal & ( set "ERROR_MSG=7z SFX self unpack failed" & set "ERROR_SOURCE=install-2.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    echo MATCH_PATCHES:%MATCH_PATCHES%
+    for /F "delims=, tokens=*" %%P in ("%MATCH_PATCHES%") do (
+        echo PATCHES: %%P
+        if "%%P" == "ssh-stab" call :git_install_ssh_stab
+    )
+    goto :eof
+
+:git_validate
+    set CHECK_EXIST=
+    set CHECK_CMD=git --version
+    set CHECK_LINEWORD=git
+    set CHECK_OK=git version %%VA_INFO_VERSION%%
+    goto:eof
+
+
+:git_install_ssh_stab
+    move "%TARGET%\usr\bin\ssh.exe" "%TARGET%\usr\bin\realssh.exe"
+    move "%TARGET%\usr\bin\scp.exe" "%TARGET%\usr\bin\realscp.exe"
+
+set SSHScript=#^^!/usr/bin/env bash^
+
+^
+
+verbose=2^
+
+^
+
+# find the real ssh/scp executable^
+
+program=$(basename ^"$0^")^
+
+if [ ^"${program}^" == ssh ]; then^
+
+    program=ssh^
+
+    short_options=^"1246AaCfgKkMNnqsTtVvXxYy^"^
+
+elif [ ^"${program}^" == scp ]; then^
+
+    program=scp^
+
+    short_options=^"12346BCpqrv^"^
+
+else^
+
+    echo unknown program ${program}^
+
+    exit 1^
+
+fi^
+
+^
+
+# parse arguments^
+
+prefix_args=()^
+
+suffix_args=()^
+
+userhost=^
+
+while test ${#} -gt 0^
+
+do^
+
+    arg=$1^
+
+    if [[ ${arg} == -* ]]; then^
+
+        arg=${arg#-}^
+
+        if [[ ${short_options} == *${arg}* ]]; then^
+
+            if [ ^"${arg}^" == ^"v^" ]; then^
+
+                verbose=3^
+
+            fi^
+
+            prefix_args+=(^"-${arg}^")^
+
+            shift^
+
+        else^
+
+            prefix_args+=(^"-${arg}^")^
+
+            prefix_args+=(^"$2^")^
+
+            shift^
+
+            shift^
+
+        fi^
+
+    else^
+
+        userhost=$1^
+
+        first_arg=$1^
+
+        shift^
+
+        while test ${#} -gt 0^
+
+        do^
+
+            suffix_args+=(^"$1^")^
+
+            shift^
+
+        done^
+
+    fi^
+
+done^
+
+^
+
+^
+
+^
+
+# try to find the username^
+
+if [[ ^^! ${userhost} == *^"@^"* ]]; then^
+
+    if [ ^"${program}^" == scp ]; then^
+
+        userhost=${suffix_args[@]: -1}^
+
+    fi^
+
+fi^
+
+^
+
+if [[ ${userhost} == *^"@^"* ]]; then^
+
+^
+
+    IFS='@' read -r -a array ^<^<^< ^"${userhost}^"^
+
+    user=${array[0]}^
+
+    host=${array[1]}^
+
+    if [ ^"${program}^" == scp ]; then^
+
+        IFS=':' read -r -a array ^<^<^< ^"${host}^"^
+
+        host=${array[0]}^
+
+    fi^
+
+    if [ ^"${user}^" == ^"git^" ]; then^
+
+        # github arguments: git@github.com git-receive-pack 'ranlempow/git-hooks.git'^
+
+        IFS='/' read -r -a array ^<^<^< ^"${suffix_args[@]: -1}^"^
+
+        user=${array[0]}^
+
+        len=${#suffix_args[@]}^
+
+        # add quote ^"'^"^
+
+        suffix_args[${len} - 1]=^"'${suffix_args[${len} - 1]}'^"^
+
+    fi^
+
+^
+
+    # find the key file on the disk^
+
+    keypath=~/.ssh/namedkeys/${user}_rsa^
+
+    keypath=^"$(cd ^"$(dirname ^"${keypath}^")^"; pwd)/$(basename ^"${keypath}^")^"^
+
+^
+
+^
+
+    # echo ${prefix_args[@]}^
+
+    # echo ${user}^
+
+    # echo ${host}^
+
+    # echo ${suffix_args[@]}^
+
+    # echo ${ssh_exec}^
+
+    # echo ${keypath}^
+
+    # echo ${keypath}^
+
+fi^
+
+^
+
+for _ssh_exec in $(type -ap ^"real${program}^"); do^
+
+    if [ ${_ssh_exec} -ef $0 ]; then continue; fi^
+
+    ssh_exec=${_ssh_exec}^
+
+done^
+
+if [ -z ${ssh_exec} ]; then^
+
+    echo ssh executable ${ssh_exec} not found^
+
+    exit 1^
+
+fi^
+
+^
+
+if [ ${verbose} -gt 3 ]; then^
+
+    echo user: ${user} 1^>^&2^
+
+    echo host: ${host} 1^>^&2^
+
+    echo ssh_exec: ${ssh_exec} 1^>^&2^
+
+    echo keypath: ${keypath} 1^>^&2^
+
+fi^
+
+^
+
+if [ -f ^"${keypath}^" ]; then^
+
+    ${ssh_exec} -i ^"${keypath}^" ${prefix_args[@]} ${first_arg} ${suffix_args[@]}^
+
+else^
+
+    ${ssh_exec} ${prefix_args[@]} ${first_arg} ${suffix_args[@]}^
+
+fi^
+
+^
+
+
+    echo.!SSHScript! > "%TARGET%\usr\bin\ssh"
+    echo.!SSHScript! > "%TARGET%\usr\bin\scp"
+
+    goto :eof
+
+
+::: function brickv_CMD_list(spec=, args=....) delayedexpansion
 @setlocal  enabledelayedexpansion
 @echo off
 @set ERROR_MSG=
@@ -4626,7 +4925,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_brickv_CMD_list
+call :REALBODY_brickv_CMD_list %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :brickv_CMD_list
 @setlocal  enabledelayedexpansion
 @echo off
@@ -4638,40 +4939,52 @@ goto :REALBODY_brickv_CMD_list
 set CALL_STACK=brickv_CMD_list %CALL_STACK%
 goto :REALBODY_brickv_CMD_list
 :REALBODY_brickv_CMD_list
+set test=%~1
+if not "%test:~0,1%" == "-" (
+    set spec=%~1
+    shift
+)
+set test=
 set args=
 
 :ArgCheckLoop_brickv_CMD_list
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_brickv_CMD_list
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_brickv_CMD_list
+if x%2x == xx set next=__NONE__
 
 @goto :GetRestArgs_brickv_CMD_list
 
 :GetRestArgs_brickv_CMD_list
 
-@set args="%~1"
+@set args=%1
 @shift
 :GetRestArgsLoop_brickv_CMD_list
 @if "%~1" == "" @goto :Main_brickv_CMD_list
-@set args=%args% "%~1"
+@set args=%args% %1
 @shift
 @goto :GetRestArgsLoop_brickv_CMD_list
 :Main_brickv_CMD_list
 @set head=
 @set next=
-
-call :BrickvPrepare %args%
+call :BrickvPrepare --spec "%spec%" --allow-empty-location %args%
 set args=
-
 call :ImportColor
-for /D %%i in (%GLOBAL_DIR%\*) do if exist "%%i\set-env.cmd" (
-    call :RecordApp "%%i" global
-)
-for /D %%i in (%LOCAL_DIR%\*) do if exist "%%i\set-env.cmd" (
-    call :RecordApp "%%i" local
-)
+
+
+set VERSION_SPCES_FILE=%TEMP%\spces-list.ver.txt
+set MATCH_SPCES_FILE=%TEMP%\spces-match.ver.txt
+call :DiscoverApp
+call :IterMatchVersion :brickv_CMD_list_startcb 999999
+
+goto :brickv_CMD_list_endcb
+:brickv_CMD_list_startcb
+    set "ActivateMark= "
+    if "%Activate%" == "1" set ActivateMark=*
+    echo. %BP%!ActivateMark!%NN% %BW%!MATCH_APP!%NN%=!AppInfoVersion! !Location!
+    goto :eof
+:brickv_CMD_list_endcb
 
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
@@ -4681,7 +4994,7 @@ endlocal & (
     set ERROR_CALLSTACK=%ERROR_CALLSTACK%
 )
 goto :eof
-::: function brickv_CMD_switch(spec, args=...) delayedexpansion
+::: function brickv_CMD_versions(spec, args=....) delayedexpansion
 @setlocal  enabledelayedexpansion
 @echo off
 @set ERROR_MSG=
@@ -4689,7 +5002,219 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_brickv_CMD_switch
+call :REALBODY_brickv_CMD_versions %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
+:brickv_CMD_versions
+@setlocal  enabledelayedexpansion
+@echo off
+@set ERROR_MSG=
+@set ERROR_SOURCE=
+@set ERROR_BLOCK=
+@set ERROR_LINENO=
+@set ERROR_CALLSTACK=
+set CALL_STACK=brickv_CMD_versions %CALL_STACK%
+goto :REALBODY_brickv_CMD_versions
+:REALBODY_brickv_CMD_versions
+set spec=%~1
+if "%spec%" == "" endlocal & ( set "ERROR_MSG=Need argument spec" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=brickv_CMD_versions" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+shift
+set args=
+
+:ArgCheckLoop_brickv_CMD_versions
+set head=%~1
+set next=%~2
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_brickv_CMD_versions
+if x%2x == xx set next=__NONE__
+
+@goto :GetRestArgs_brickv_CMD_versions
+
+:GetRestArgs_brickv_CMD_versions
+
+@set args=%1
+@shift
+:GetRestArgsLoop_brickv_CMD_versions
+@if "%~1" == "" @goto :Main_brickv_CMD_versions
+@set args=%args% %1
+@shift
+@goto :GetRestArgsLoop_brickv_CMD_versions
+:Main_brickv_CMD_versions
+@set head=
+@set next=
+call :BrickvPrepare --spec %spec% %args%
+call :brickv_CMD_install --only-versions --spec %spec% %args%
+FOR /F "delims=$ tokens=1 USEBACKQ" %%F IN ("%VERSION_SPCES_FILE%") do (
+    echo %%F
+)
+endlocal & (
+    set ERROR_MSG=%ERROR_MSG%
+    set ERROR_SOURCE=%ERROR_SOURCE%
+    set ERROR_BLOCK=%ERROR_BLOCK%
+    set ERROR_LINENO=%ERROR_LINENO%
+    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
+)
+goto :eof
+::: function brickv_CMD_Update(specs, no_switch=N, no_install=N, args=....) delayedexpansion
+@setlocal  enabledelayedexpansion
+@echo off
+@set ERROR_MSG=
+@set ERROR_SOURCE=
+@set ERROR_BLOCK=
+@set ERROR_LINENO=
+@set ERROR_CALLSTACK=
+call :REALBODY_brickv_CMD_Update %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
+:brickv_CMD_Update
+@setlocal  enabledelayedexpansion
+@echo off
+@set ERROR_MSG=
+@set ERROR_SOURCE=
+@set ERROR_BLOCK=
+@set ERROR_LINENO=
+@set ERROR_CALLSTACK=
+set CALL_STACK=brickv_CMD_Update %CALL_STACK%
+goto :REALBODY_brickv_CMD_Update
+:REALBODY_brickv_CMD_Update
+set specs=%~1
+if "%specs%" == "" endlocal & ( set "ERROR_MSG=Need argument specs" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=brickv_CMD_Update" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+shift
+set no_switch=0
+set no_install=0
+set args=
+
+:ArgCheckLoop_brickv_CMD_Update
+set head=%~1
+set next=%~2
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_brickv_CMD_Update
+if x%2x == xx set next=__NONE__
+
+@if "%head%" == "--no-switch" @(
+    @set no_switch=1
+    @shift
+    @goto :ArgCheckLoop_brickv_CMD_Update
+)
+@if "%head%" == "--no-install" @(
+    @set no_install=1
+    @shift
+    @goto :ArgCheckLoop_brickv_CMD_Update
+)
+@goto :GetRestArgs_brickv_CMD_Update
+
+:GetRestArgs_brickv_CMD_Update
+
+@set args=%1
+@shift
+:GetRestArgsLoop_brickv_CMD_Update
+@if "%~1" == "" @goto :Main_brickv_CMD_Update
+@set args=%args% %1
+@shift
+@goto :GetRestArgsLoop_brickv_CMD_Update
+:Main_brickv_CMD_Update
+@set head=
+@set next=
+
+set Installs=
+set Switches=
+set Faileds=
+set PassToInstall=%args%
+
+set NotFounds=
+set targets=%specs: =#%
+
+:brickv_CMD_Update_switch_loop
+for /F "delims=# tokens=1*" %%A IN ("%targets%") do (
+    call :brickv_CMD_Update_switch "%%~A"
+    set targets=%%B
+)
+if not "%targets%" == "" goto :brickv_CMD_Update_switch_loop
+if "%no_install%" == "1" (
+endlocal & (
+    set ERROR_MSG=%ERROR_MSG%
+    set ERROR_SOURCE=%ERROR_SOURCE%
+    set ERROR_BLOCK=%ERROR_BLOCK%
+    set ERROR_LINENO=%ERROR_LINENO%
+    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
+)
+goto :eof
+)
+
+
+set targets=%NotFounds%
+:brickv_CMD_Update_install_loop
+for /F "delims=# tokens=1*" %%A IN ("%targets%") do (
+    call :brickv_CMD_Update_install "%%~A"
+    set targets=%%B
+)
+if not "%targets%" == "" goto :brickv_CMD_Update_install_loop
+
+set SwitchesString=%Switches:#= %
+if not "%Switches%" == "" call :PrintMsg normal update switched apps: "%SwitchesString%"
+set InstallsString=%Installs:#= %
+if not "%Installs%" == "" if not "%DRYRUN%" == "1" call :PrintMsg normal update installed apps: "%InstallsString%"
+if not "%Installs%" == "" if "%DRYRUN%" == "1" call :PrintMsg normal update skipped apps: "%InstallsString%"
+
+set FailedsString=%Faileds:#= %
+if not "%Faileds%" == "" call :PrintMsg error error failure apps: "%FailedsString%"
+endlocal & (
+    set "%FailedsString%"=%"%FailedsString%"%
+    set ERROR_MSG=%ERROR_MSG%
+    set ERROR_SOURCE=%ERROR_SOURCE%
+    set ERROR_BLOCK=%ERROR_BLOCK%
+    set ERROR_LINENO=%ERROR_LINENO%
+    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
+)
+goto :eof
+
+
+:brickv_CMD_Update_switch
+if "%~1" == "" goto :eof
+set SwitchSuccess=1
+if not "%no_switch%" == "1" (
+    call :brickv_CMD_switch "%~1" --internal
+) else (
+    set SwitchSuccess=0
+)
+if not "%SwitchSuccess%" == "1" (
+    call :PrintMsg normal switch "%~1" add to dependency list
+    if "%NotFounds%" == "" (set NotFounds=%~1) else (set NotFounds=%NotFounds%#%~1)
+) else (
+    if "%Switches%" == "" (set Switches=%SWITCH_NAME%) else (set Switches=%Switches%#%SWITCH_NAME%)
+)
+goto :eof
+
+:brickv_CMD_Update_install
+if "%~1" == "" goto :eof
+call :brickv_CMD_install --spec "%~1" %PassToInstall%
+if not "%ERROR_MSG%" == "" (
+    call :PrintMsg error error %ERROR_MSG%
+    if "%Faileds%" == "" (set Faileds=%~1) else (set Faileds=%Faileds%#%~1)
+) else (
+    if "%Installs%" == "" (set Installs=%REQUEST_NAME%) else (set Installs=%Installs%#%REQUEST_NAME%)
+)
+
+goto :eof
+endlocal & (
+    set ERROR_MSG=%ERROR_MSG%
+    set ERROR_SOURCE=%ERROR_SOURCE%
+    set ERROR_BLOCK=%ERROR_BLOCK%
+    set ERROR_LINENO=%ERROR_LINENO%
+    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
+)
+goto :eof
+::: function brickv_CMD_switch(spec, internal=N, args=....) delayedexpansion
+@setlocal  enabledelayedexpansion
+@echo off
+@set ERROR_MSG=
+@set ERROR_SOURCE=
+@set ERROR_BLOCK=
+@set ERROR_LINENO=
+@set ERROR_CALLSTACK=
+call :REALBODY_brickv_CMD_switch %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :brickv_CMD_switch
 @setlocal  enabledelayedexpansion
 @echo off
@@ -4702,88 +5227,61 @@ set CALL_STACK=brickv_CMD_switch %CALL_STACK%
 goto :REALBODY_brickv_CMD_switch
 :REALBODY_brickv_CMD_switch
 set spec=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument spec" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=brickv_CMD_switch" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%spec%" == "" endlocal & ( set "ERROR_MSG=Need argument spec" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=brickv_CMD_switch" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
+set internal=0
 set args=
 
 :ArgCheckLoop_brickv_CMD_switch
 set head=%~1
 set next=%~2
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_brickv_CMD_switch
+if x%2x == xx set next=__NONE__
 
-if "%head%" == "" goto :GetRestArgs_brickv_CMD_switch
-if "%next%" == "" set next=__NONE__
-
+@if "%head%" == "--internal" @(
+    @set internal=1
+    @shift
+    @goto :ArgCheckLoop_brickv_CMD_switch
+)
 @goto :GetRestArgs_brickv_CMD_switch
 
 :GetRestArgs_brickv_CMD_switch
 
-@set args="%~1"
+@set args=%1
 @shift
 :GetRestArgsLoop_brickv_CMD_switch
 @if "%~1" == "" @goto :Main_brickv_CMD_switch
-@set args=%args% "%~1"
+@set args=%args% %1
 @shift
 @goto :GetRestArgsLoop_brickv_CMD_switch
 :Main_brickv_CMD_switch
 @set head=
 @set next=
-call :BrickvPrepare --spec "%spec%" %args%
+call :BrickvPrepare --spec "%spec%" --allow-empty-location %args%
 set args=
-call :FindAppLocation
-echo %AppPath%
-if "%AppPath%" != "" echo.@call "%AppPath%\set-env.cmd" --set >> "%POST_SCIRPT%"
-endlocal & (
-    set ERROR_MSG=%ERROR_MSG%
-    set ERROR_SOURCE=%ERROR_SOURCE%
-    set ERROR_BLOCK=%ERROR_BLOCK%
-    set ERROR_LINENO=%ERROR_LINENO%
-    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
-)
-goto :eof
-
-
-::: function FindAppLocation()
-@setlocal  
-@echo off
-@set ERROR_MSG=
-@set ERROR_SOURCE=
-@set ERROR_BLOCK=
-@set ERROR_LINENO=
-@set ERROR_CALLSTACK=
-goto :REALBODY_FindAppLocation
-:FindAppLocation
-@setlocal  
-@echo off
-@set ERROR_MSG=
-@set ERROR_SOURCE=
-@set ERROR_BLOCK=
-@set ERROR_LINENO=
-@set ERROR_CALLSTACK=
-set CALL_STACK=FindAppLocation %CALL_STACK%
-goto :REALBODY_FindAppLocation
-:REALBODY_FindAppLocation
-
-:ArgCheckLoop_FindAppLocation
-set head=%~1
-set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_FindAppLocation
-if "%next%" == "" set next=__NONE__
-
-
- endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=FindAppLocation" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-:GetRestArgs_FindAppLocation
-:Main_FindAppLocation
-@set head=
-@set next=
+set AppPath=
+call :ImportColor
 
 set VERSION_SPCES_FILE=%TEMP%\spces-list.ver.txt
 set MATCH_SPCES_FILE=%TEMP%\spces-match.ver.txt
 call :DiscoverApp
-call :MatchVersion --output-format env --spec-match "%REQUEST_SPEC%" --specs-file "%VERSION_SPCES_FILE%"
-if not "%ERROR_MSG%" == "" (
+call :IterMatchVersion "" 1
+
+set "SWITCH_NAME=%MATCH_APP%=%AppInfoVersion%"
+set SwitchSuccess=0
+if not "%AppPath%" == "" (
+    call :PrintMsg normal switch enable "%BW%!MATCH_APP!%NN%=!AppInfoVersion!" at %AppPath%
+    echo.@call "%AppPath%\set-env.cmd" --set>> "%POST_SCIRPT%"
+    set SwitchSuccess=1
+) else (
+    if not "%internal%" == "1" echo.@set "POST_ERRORLEVEL=1">> "%POST_SCIRPT%"
+)
+if "%internal%" == "1" (
 endlocal & (
+    set SwitchSuccess=%SwitchSuccess%
     set AppPath=%AppPath%
+    set SWITCH_NAME=%SWITCH_NAME%
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
     set ERROR_BLOCK=%ERROR_BLOCK%
@@ -4792,16 +5290,6 @@ endlocal & (
 )
 goto :eof
 )
-set AppPath=%MATCH_CARRY%
-endlocal & (
-    set AppPath=%AppPath%
-    set ERROR_MSG=%ERROR_MSG%
-    set ERROR_SOURCE=%ERROR_SOURCE%
-    set ERROR_BLOCK=%ERROR_BLOCK%
-    set ERROR_LINENO=%ERROR_LINENO%
-    set ERROR_CALLSTACK=%ERROR_CALLSTACK%
-)
-goto :eof
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -4810,6 +5298,7 @@ endlocal & (
     set ERROR_CALLSTACK=%ERROR_CALLSTACK%
 )
 goto :eof
+
 ::: function DiscoverApp()
 @setlocal  
 @echo off
@@ -4818,7 +5307,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_DiscoverApp
+call :REALBODY_DiscoverApp %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :DiscoverApp
 @setlocal  
 @echo off
@@ -4834,9 +5325,9 @@ goto :REALBODY_DiscoverApp
 :ArgCheckLoop_DiscoverApp
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_DiscoverApp
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_DiscoverApp
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=DiscoverApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -4844,15 +5335,16 @@ if "%next%" == "" set next=__NONE__
 :Main_DiscoverApp
 @set head=
 @set next=
-if exist "%VERSION_SPCES_FILE%" del "%VERSION_SPCES_FILE%" >nul
 copy /y NUL "%VERSION_SPCES_FILE%" >NUL
+copy /y NUL "%MATCH_SPCES_FILE%" >NUL
 
 for /D %%i in (%GLOBAL_DIR%\*) do if exist "%%i\set-env.cmd" (
-    call :RecordApp "%%i" global --no-print --spec-file "%VERSION_SPCES_FILE%"
+    call :RecordApp "%%i" global --spec-file "%VERSION_SPCES_FILE%"
 )
 for /D %%i in (%LOCAL_DIR%\*) do if exist "%%i\set-env.cmd" (
-    call :RecordApp "%%i" local --no-print --spec-file "%VERSION_SPCES_FILE%"
+    call :RecordApp "%%i" local --spec-file "%VERSION_SPCES_FILE%"
 )
+call :MatchVersion --output-format cmd --all --spec-match "%REQUEST_SPEC%"                   --specs-file "%VERSION_SPCES_FILE%" --output "%MATCH_SPCES_FILE%"
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -4862,7 +5354,43 @@ endlocal & (
 )
 goto :eof
 
-::: function RecordApp(TARGET, Location, No_Print=N, Spec_File=?)
+
+:IterMatchVersion
+set CALLBACK=%~1
+set limit=%~2
+set count=0
+for /F "tokens=1-7 usebackq" %%A IN ("%MATCH_SPCES_FILE%") do (
+    set MATCH_CARRY=%%~G
+    for /F "delims=, tokens=1-4 usebackq" %%J IN ('!MATCH_CARRY!') do (
+        set _Activate=%%J
+        set _Location=%%K
+        set _AppPath=%%L
+        set _AppInfoVersion=%%M
+    )
+    set Skip=0
+    if not "%REQUEST_LOCATION%" == "" if not "%REQUEST_LOCATION%" == "!_Location!" set Skip=1
+    if "!Skip!" == "0" set /A "count+=1"
+    if !count! GTR !limit! set Skip=1
+    if "!Skip!" == "0" (
+        set MATCH_APP=%%A
+        set MATCH_MAJOR=%%B
+        set MATCH_MINOR=%%C
+        set MATCH_PATCH=%%D
+        set MATCH_ARCH=%%E
+        set MATCH_PATCHES=%%F
+        set Activate=!_Activate!
+        set Location=!_Location!
+        set AppPath=!_AppPath!
+        set AppInfoVersion=!_AppInfoVersion!
+        if not "%CALLBACK%" == "" call %CALLBACK%
+    )
+)
+set CALLBACK=
+set count=
+set limit=
+goto :eof
+
+::: function RecordApp(TARGET, Location, Spec_File=?)
 @setlocal  
 @echo off
 @set ERROR_MSG=
@@ -4870,7 +5398,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_RecordApp
+call :REALBODY_RecordApp %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :RecordApp
 @setlocal  
 @echo off
@@ -4883,30 +5413,24 @@ set CALL_STACK=RecordApp %CALL_STACK%
 goto :REALBODY_RecordApp
 :REALBODY_RecordApp
 set TARGET=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument TARGET" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%TARGET%" == "" endlocal & ( set "ERROR_MSG=Need argument TARGET" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
 set Location=%~1
-if "%1" == "" endlocal & ( set "ERROR_MSG=Need argument Location" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+if "%Location%" == "" endlocal & ( set "ERROR_MSG=Need argument Location" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
-set No_Print=0
 set Spec_File=
 
 :ArgCheckLoop_RecordApp
 set head=%~1
 set next=%~2
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_RecordApp
+if x%2x == xx set next=__NONE__
 
-if "%head%" == "" goto :GetRestArgs_RecordApp
-if "%next%" == "" set next=__NONE__
-
-@if "%head%" == "--no-print" @(
-    @set No_Print=1
-    @shift
-    @goto :ArgCheckLoop_RecordApp
-)
 @if "%head%" == "--spec-file" @(
     @set Spec_File=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next:~0,1%" == "-" endlocal & ( set "ERROR_MSG=Need value after "%head%"" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_CMD_list.cmd" & set "ERROR_BLOCK=RecordApp" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
     @shift
     @goto :ArgCheckLoop_RecordApp
@@ -4940,11 +5464,9 @@ goto :eof
 )
 call "%TARGET%\set-env.cmd" --info
 call set _VA_BASE=%%VA_%VA_INFO_APPNAME%_BASE%%
+set Activate=0
 if "%_VA_BASE%" == "%TARGET%" set Activate=1
-set "ActivateText= "
-if "%Activate%" == "1" set ActivateText=*
-if not "%No_Print%" == "1" echo. %BP%%ActivateText%%NN% %BW%%VA_INFO_APPNAME%%NN%=%VA_INFO_VERSION% %Location%
-if not "%Spec_File%" == "" echo.%VA_INFO_APPNAME%=%VA_INFO_VERSION%$%TARGET% >> "%Spec_File%"
+if not "%Spec_File%" == "" echo.%VA_INFO_APPNAME%=%VA_INFO_VERSION%                                    $%Activate%,%Location%,%TARGET%,%VA_INFO_VERSION%>> "%Spec_File%"
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -4964,7 +5486,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_exec
+call :REALBODY_CMD_exec %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_exec
 @setlocal  
 @echo off
@@ -4980,9 +5504,9 @@ goto :REALBODY_CMD_exec
 :ArgCheckLoop_CMD_exec
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_exec
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_exec
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=CMD_exec" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
@@ -5008,7 +5532,9 @@ goto :eof
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-goto :REALBODY_CMD_help
+call :REALBODY_CMD_help %*
+if not "%ERROR_MSG%" == "" goto :_Error
+goto :eof
 :CMD_help
 @setlocal  
 @echo off
@@ -5024,9 +5550,9 @@ goto :REALBODY_CMD_help
 :ArgCheckLoop_CMD_help
 set head=%~1
 set next=%~2
-
-if "%head%" == "" goto :GetRestArgs_CMD_help
-if "%next%" == "" set next=__NONE__
+set next_prefix=%next:~0,1%
+if x%1x == xx goto :GetRestArgs_CMD_help
+if x%2x == xx set next=__NONE__
 
 
  endlocal & ( set "ERROR_MSG=Unkwond option "%head%"" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=CMD_help" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )

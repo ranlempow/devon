@@ -1,6 +1,5 @@
 :gradle_init
 	set _RELEASE_URL=https://services.gradle.org/distributions
-	set DOWNLOAD_URL=%RELEASE_URL%
 	set ACCEPT=local global
     goto :eof
 
@@ -22,7 +21,7 @@
 	goto :eof
 
 :gradle_unpack
-	set SETENV=%SETENV%;GRADLE_HOME:$SCRIPT_SOURCE$
+	set SETENV=%SETENV%;GRADLE_HOME:$SCRIPT_FOLDER$
 	set SETENV=%SETENV%;$GRADLE_HOME$\bin
 	set UNPACK_METHOD=unzip
 	goto :eof

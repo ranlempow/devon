@@ -7,7 +7,7 @@ rem TODO: Need test
                            name=?, targetdir=?,
                            system=N, global=N, local=N,
                            dry=N, force=N, check_only=N, no_check=N, no_color=N,
-                           silent=N, quiet=N, v=N, vv=N, vvv=N,
+                           silent=N, quiet=N, v=N, vv=N, vvv=N, allow_empty_location=N,
                            REST_ARGS_PRINT=....)
 
 @rem == init setting variables ==
@@ -28,14 +28,13 @@ if "%REQUEST_ARCH%" == "" (
 @rem 支援以下三種安裝地點, 預設地點由安裝程式決定
 @rem system: 需要root權限, 通常為官方預設的正常安裝程序
 @rem global & local: 使用者家目錄或是專案目錄
-set REQUEST_LOCATION=global
+if not "%allow_empty_location%" == "1" set REQUEST_LOCATION=global
 if "%system%" == "1" set REQUEST_LOCATION=system
 if "%global%" == "1" set REQUEST_LOCATION=global
 if "%local%" == "1" set REQUEST_LOCATION=local
 
-set LOCAL_DIR=%LOCALAPPDATA%\Programs
-set GLOBAL_DIR=%PRJ_BIN%
-
+set GLOBAL_DIR=%LOCALAPPDATA%\Programs
+set LOCAL_DIR=%PRJ_BIN%
 
 @REM 安裝的目錄名稱
 set REQUEST_NAME=%name%
@@ -99,7 +98,9 @@ if not "%REQUEST_SPEC%" == "" (
 )
 set REQUEST_SPEC=%REQUEST_APP%=%REQUEST_VER%@%REQUEST_ARCH%[%REQUEST_PATCHES%]
 
-call :PrintVersion info request "%REQUEST_APP%" "%REQUEST_VER%" "%REQUEST_ARCH%" "%REQUEST_PATCHES%"
+if not "%REQUEST_APP%" == "" (
+  call :PrintVersion info request "%REQUEST_APP%" "%REQUEST_VER%" "%REQUEST_ARCH%" "%REQUEST_PATCHES%"
+)
 return %DRYRUN%, %FORCE%, %CHECKONLY%, %NOCHECK%, %NO_COLOR%, %LOG_LEVEL%, ^\n^
        %VERSION_SPCES_FILE%, %LOCAL_DIR%, %GLOBAL_DIR%, ^\n^
        %REQUEST_SPEC%, %REQUEST_APP%, ^\n^

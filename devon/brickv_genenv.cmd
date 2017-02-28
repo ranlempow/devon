@@ -159,14 +159,14 @@ powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_^\n^
 
 ::: inline(SetEnvBeginTemplate)
 
-@if not "%SCRIPT_SOURCE%" == "" set _OLD_SCRIPT_SOURCE=%SCRIPT_SOURCE%
+@if not "%SCRIPT_FOLDER%" == "" set _OLD_SCRIPT_FOLDER=%SCRIPT_FOLDER%
 @if not "%SETENV_PATH%" == "" set _OLD_SETENV_PATH=%SETENV_PATH%
 @if not "%QUIET%" == "" set _OLD_QUIET=%QUIET%
 @if not "%VA_INFO_APPNAME%" == "" set _OLD_VA_INFO_APPNAME=%VA_INFO_APPNAME%
 @if not "%VA_INFO_VERSION%" == "" set _OLD_VA_INFO_VERSION=%VA_INFO_VERSION%
 
-@set SCRIPT_SOURCE=%~dp0
-@if "%SCRIPT_SOURCE:~-1%"=="\" @set SCRIPT_SOURCE=%SCRIPT_SOURCE:~0,-1%
+@set SCRIPT_FOLDER=%~dp0
+@if "%SCRIPT_FOLDER:~-1%"=="\" @set SCRIPT_FOLDER=%SCRIPT_FOLDER:~0,-1%
 @set SETENV_PATH=%~0
 
 @if "%~2" == "--quiet" @set QUIET=1
@@ -201,14 +201,14 @@ powershell -Command "(Get-Content '%TEMP%\%VarName%') | ForEach-Object { $_^\n^
 ::: inline(SetEnvSetTemplate)
 :SetEnv
 @if not "%VA_${APPNAME}_BASE%" == "" @call %VA_${APPNAME}_BASE%\set-env.cmd --clear
-@set VA_${APPNAME}_BASE=%SCRIPT_SOURCE%
+@set VA_${APPNAME}_BASE=%SCRIPT_FOLDER%
 ::: endinline
 
 
 
 ::: inline(SetEnvClearTemplate)
 :ClearEnv
-@if not "%VA_${APPNAME}_BASE%" == "%SCRIPT_SOURCE%" @goto :eof
+@if not "%VA_${APPNAME}_BASE%" == "%SCRIPT_FOLDER%" @goto :eof
 @set VA_${APPNAME}_BASE=
 ::: endinline
 
@@ -252,10 +252,16 @@ ${CheckScript}
 @set CHECK_OK=
 @set VA_INFO_APPNAME=%_OLD_VA_INFO_APPNAME%
 @set VA_INFO_VERSION=%_OLD_VA_INFO_VERSION%
+@set _OLD_VA_INFO_APPNAME=
+@set _OLD_VA_INFO_VERSION=
+
 :QuitInfo
-@set SCRIPT_SOURCE=%_OLD_SCRIPT_SOURCE%
+@set SCRIPT_FOLDER=%_OLD_SCRIPT_FOLDER%
 @set SETENV_PATH=%_OLD_SETENV_PATH%
 @set QUIET=%_OLD_QUIET%
+@set _OLD_SCRIPT_FOLDER=
+@set _OLD_SETENV_PATH=
+@set _OLD_QUIET=
 @if "%FAILED%" == "1" (@set FAILED=) & (@cmd /C exit /b 1) & (@goto :eof)
 @cmd /C exit /b 0
 ::: endinline
