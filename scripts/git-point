@@ -1,0 +1,287 @@
+#!/usr/bin/env bash
+
+declare -A patterns
+declare -A entries
+declare -A pointers
+verbose=3
+NL='
+'
+debug_echo() {
+    if [ ${verbose} -gt 2 ]; then
+        echo pgit $*
+    fi
+}
+
+info_echo() {
+    if [ ${verbose} -gt 1 ]; then
+        echo pgit $*
+    fi
+}
+
+error_echo() {
+    if [ ${verbose} -gt 0 ]; then
+        echo pgit error: $*
+    fi
+}
+
+
+from_cache() {
+    path=$1
+    sig=$2
+    # if [ ! -s ${path} ]; then echo assert error: file not found; exit 1; fi
+    if [ -z ${sig} ]; then error_echo sig not defined; exit 1; fi
+    cachefile="${cachedir}/${sig:0:2}/${sig}*"
+    if [ ! -s ${cachefile} ]; then
+        remote_exist=$(ssh ${remote_ssh_host} find "~${remote_path}" -type f -path "~${remote_path}/${sig:0:2}/${sig}*")
+        if [ -z ${remote_exist} ]; then
+            error_echo ${path} not in remote
+            exit 1
+        fi
+        mkdir -p "${cachedir}/${sig:0:2}"
+        scp ${remote_scp_port} "${remote_host}:${remote_exist}" "${cachedir}/${sig:0:2}/$(basename ${remote_exist})"
+    fi
+    if [ ! -s ${cachefile} ]; then
+        error_echo receive cache failed at ${path} through scp.
+        exit 1
+    fi
+    gzip -dc ${cachefile} > "${path}"
+}
+
+send_cache() {
+    path=$1
+    sig=$2
+    if [ ! -s ${path} ]; then error_echo file not found; exit 1; fi
+    if [ -z ${sig} ]; then error_echo sig not defined; exit 1; fi
+
+    targetdir="${cachedir}/${sig:0:2}/"
+    target=${sig}-$(stat -c %Y "${path}")-$(basename "${path}")
+    mkdir -p ${targetdir}
+    if [ -s "${targetdir}/${target}.gz" ]; then
+        info_echo ${path} already in cache
+    else
+        gzip -c "${path}" > "${targetdir}/${target}.gz"
+        info_echo add ${path} to cache.
+    fi
+    remote_exist=$(ssh ${remote_ssh_host} find "~${remote_path}" -type f -path "~${remote_path}/${sig:0:2}/${sig}*")
+
+    if [ -z ${remote_exist} ]; then
+        ssh ${remote_ssh_host} mkdir -p "~${remote_path}/${sig:0:2}"
+        scp ${remote_scp_port} "${targetdir}/${target}.gz" "${remote_host}:~${remote_path}/${sig:0:2}"
+        if [ $? -ne 0 ]; then
+            error_echo send cache failed at ${path} through scp
+            exit 1
+        fi
+    else
+        info_echo ${path} already in remote
+    fi
+
+}
+
+
+
+read_gitattributes() {
+    while read p; do
+        # remove tail \r
+        p=$(echo "${p}")
+        read -a array <<< ${p}
+        for attrib in "${array[@]:1}"; do
+            if [[ "${attrib}" == point* ]]; then
+                sig_command=""
+                # sig_command="point sig-def"
+                if [[ "${attrib}" == point=* ]]; then
+                    sig_command="${attrib#point=}"
+                fi
+                patterns["${array[0]}"]="${sig_command}"
+            fi
+        done
+    done < ".gitattributes"
+}
+
+parse_remote() {
+    variable=$1
+    url=$2
+    if [ -z "$2" ]; then
+        return
+    fi
+    # URL: user@host:port/path
+    hostport=${url%%/*}
+    eval ${variable}_host=${hostport%%:*}
+    port=${hostport#$remote_host}
+    eval ${variable}_port=${port#:}
+    eval ${variable}_path=${url#$hostport}
+
+    if [ ! -z ${remote_port} ]; then
+        eval ${variable}_ssh_host=${remote_host}:${remote_port}
+        eval ${variable}_scp_port=-P ${remote_port}
+    else
+        eval ${variable}_ssh_host=${remote_host}
+        eval ${variable}_scp_port=
+    fi
+    eval info_echo remote: "\$${variable}_host" "\$${variable}_port" "\$${variable}_path"
+}
+
+
+commit() {
+    declare -A sendsuccess
+    declare -A sendprepare
+
+    for f in ${!entries[@]}; do
+        fsig=${entries[${f}]%%"$NL"*}
+        psig=${pointers[${f}]%%"$NL"*}
+
+        if [ "${fsig}" == "${psig}" ]; then
+            continue
+        elif [ -z "${psig}" ]; then
+            echo "  new file: ${f}"
+        else
+            echo "  modified: ${f}"
+        fi
+        sendprepare[${f}]=${fsig}
+
+    done
+
+    # remove points, if their file no more exist
+    for f in ${!pointers[@]}; do
+        if [ ! -s "${f}" ]; then
+            echo "   deleted: ${f}"
+            if [ ${dryrun} = false ]; then
+                rm "${f}.pt"
+            fi
+        fi
+    done
+
+    if [ ${dryrun} = false ]; then
+        for f in ${!sendprepare[@]}; do
+            send_cache "${f}" ${sendprepare[${f}]}
+            sendsuccess[${f}]=true
+        done
+        for f in ${!sendsuccess[@]}; do
+            echo "${entries[${f}]}">"${f}.pt"
+        done
+    fi
+}
+
+checkout() {
+    for f in ${!pointers[@]}; do
+        fsig=${entries[${f}]%%"$NL"*}
+        psig=${pointers[${f}]%%"$NL"*}
+        if [ "${fsig}" == "${psig}" ]; then
+            continue
+        fi
+        from_cache "${f}" ${psig}
+    done
+
+    # remove files, if their point no more exist
+    for f in ${!entries[@]}; do
+        if [ ! -s "${f}.pt" ]; then
+            rm "${f}"
+        fi
+    done
+}
+
+do_install() {
+    if [ -z "${PRJ_CONF}" ]; then
+        error_echo error: not a devsh environment
+        exit 1
+    fi
+    declare -A action
+    action["pre-commit"]=commit
+    action["post-checkout"]=checkout
+
+    for hook in "${!action[@]}"; do
+        cmd="#!/usr/bin/env bash
+git point ${action[${hook}]}
+if [ \$? -ne 0 ]; then
+    echo abort: pointgit error
+    exit 1
+fi";
+        # cmd=${cmd//%CMD%/${action[${hook}]}}
+        mkdir -p "${PRJ_CONF}/git_hooks/${hook}"
+        echo "${cmd}"> "${PRJ_CONF}/git_hooks/${hook}/pointgit-${hook}"
+    done
+}
+
+
+giturl=$(git remote get-url pointgit)
+if [ $? -ne 0 ]; then
+    error_echo error: the \'pointgit\' is not a git remote
+    error_echo error: use \'git remote add pointgit {url}\' to install
+    # exit 1
+fi
+parse_remote remote "${giturl}"
+# parse_remote push "$(git remote get-url --push pointgit)"
+
+echo
+read_gitattributes
+for p in "${!patterns[@]}"; do
+    debug_echo patterns: "${p}"
+    sig_command=${patterns[${p}]}
+    unset files
+    declare -A files
+
+    for f in $(find . -path "./${p}"); do
+        if [ -f "${f}" ]; then
+            debug_echo ${f}
+            files[${f}]=true
+        fi
+    done
+
+    # # respect gitignore
+    # for ignore in $(git check-ignore "${!files[@]}" 2>/dev/null); do
+    #     unset files[${ignore}]
+    # done
+
+    for f in "${!files[@]}"; do
+        debug_echo sig\(${sig_command}\): ${f}
+        entries[${f}]=""
+        if [ -z ${sig_command} ]; then
+            entries[${f}]=$(md5sum "${f}" | awk '{ print $1 }')
+        else
+            entries[${f}]=$(git ${sig_command} "${f}")
+        fi
+    done
+
+done
+
+# shopt -s globstar
+unset files
+declare -A files
+for p in $(find . -name "*.pt"); do
+    # echo p:${p}
+    if [ -s "${p}" ]; then
+        files[${p}]=true
+    fi
+done
+
+# respect gitignore
+for ignore in $(git check-ignore "${!files[@]}" 2>/dev/null); do
+    unset files[${ignore}]
+done
+
+for p in "${!files[@]}"; do
+    debug_echo p:${p}
+    pointers[${p%.*}]=$(cat "${p}")
+done
+
+
+if [ ! -z "${PRJ_TMP}" ]; then
+    cacheroot=$(echo "/${PRJ_TMP}" | sed -e 's/\\/\//g' -e 's/://')
+    cachedir=${cacheroot}/pointgit-cache
+else
+    cachedir=${TEMP}/pointgit-cache
+fi
+
+debug_echo cachedir:${cachedir}
+mkdir -p ${cachedir}
+dryrun=false
+case $1 in
+    commit)
+        commit;;
+    checkout)
+        checkout;;
+    install)
+        do_install;;
+    *)
+        dryrun=true
+        commit;;
+esac
