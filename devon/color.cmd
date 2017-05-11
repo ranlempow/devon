@@ -4,6 +4,7 @@ rem Test Ok
 if not "%NN%" == "" goto :eof
 if "%NO_COLOR%" == "1" goto :eof
 if "%TEST_SHELL%" == "1" goto :eof
+if "%ANSICON%" == "" goto :eof
 
 for /F "skip=1 delims=" %%F in ('
     wmic PATH Win32_LocalTime GET Day^,Month^,Year /FORMAT:TABLE
