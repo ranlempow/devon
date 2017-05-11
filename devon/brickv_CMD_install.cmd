@@ -12,10 +12,13 @@ set APPNAME=%REQUEST_APP%
 rem init
 call :ExistsLabel %APPNAME%_init
 if "%LabelExists%" == "1" (
-    call :%APPNAME%_Init
+    call :%APPNAME%_init
 ) else (
     error("%APPNAME% not in installable list")
 )
+if "%ALLOW_EMPTY_LOCATION%" == "1" if "%REQUEST_LOCATION%" == "" set REQUEST_LOCATION=global
+
+
 rem detect
 rem call :ExistsLabel %APPNAME%_detect
 rem if "%LabelExists%" == 1 call :%APPNAME%_detect
@@ -167,3 +170,4 @@ goto :eof
 
 #include("..\larges\gradle\install-global-new2.cmd")
 #include("..\larges\git\install-2.cmd")
+#include("..\larges\clink\install.cmd")
