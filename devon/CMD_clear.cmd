@@ -21,7 +21,7 @@ call :GetIniArray DEVON_CONFIG_PATH "clear"
 (set Text=!inival!)&(set LoopCb=:clear_prject)&(set ExitCb=:exit_clear_prject)&(set Spliter=;)
 goto :SubString
 :clear_prject
-    if exist "!PRJ_ROOT!\!substring!" call del "!PRJ_ROOT!\!substring!"
+    if not "!substring!" == "" if exist "!PRJ_ROOT!\!substring!" call del "!PRJ_ROOT!\!substring!"
     goto :NextSubString
 :exit_clear_prject
 set inival=
