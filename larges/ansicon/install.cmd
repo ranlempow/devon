@@ -17,8 +17,8 @@ rem "browser_download_url": "https://github.com/adoxa/ansicon/releases/download/
             for /F "delims=/ tokens=7" %%P in ("!TARGET_URL!") do (
                 set TARGET_VER=%%P
             )
-            set ANSICON_VER=!TARGET_VER:~1!
-            echo.ansicon=!ANSICON_VER![.]$!TARGET_URL:~0,-1!>> "%VERSION_SPCES_FILE%"
+            set FOUND_VER=!TARGET_VER:~1!
+            echo.ansicon=!FOUND_VER![.]$!TARGET_URL:~0,-1!>> "%VERSION_SPCES_FILE%"
 
         )
     )
@@ -26,18 +26,25 @@ rem "browser_download_url": "https://github.com/adoxa/ansicon/releases/download/
 
 :ansicon_prepare
 	set APPVER=%MATCH_VER%
-	if "%REQUEST_NAME%" == "" set REQUEST_NAME=ansicon-%APPVER%
+    if "%REQUEST_ARCH%" == "any" set REQUEST_ARCH=x64
+
+	if "%REQUEST_NAME%" == "" set REQUEST_NAME=ansicon-%APPVER%-%REQUEST_ARCH%
 	set DOWNLOAD_URL=%MATCH_CARRY%
 	goto :eof
 
 :ansicon_unpack
-	set SETENV=%SETENV%;$SCRIPT_FOLDER$\x86-x64??
-	set UNPACK_METHOD=unzip
+    if "%REQUEST_ARCH%" == "x86" (
+	    set SETENV=%SETENV%;$SCRIPT_FOLDER$\x86
+    ) else (
+        set SETENV=%SETENV%;$SCRIPT_FOLDER$\x64
+    )
+    md "%TARGETDIR%\%REQUEST_NAME%" 1>nul 2>&1
+	pcall :Unzip "%INSTALLER%" "%TARGETDIR%\%REQUEST_NAME%"
 	goto :eof
 
 :ansicon_validate
 	set CHECK_EXIST=
-	set CHECK_CMD=clink_x86
-	set CHECK_LINEWORD=Copyright
-	set CHECK_OK=Clink v%%VA_INFO_VERSION%%
+	set CHECK_CMD=ansicon.exe --help
+	set CHECK_LINEWORD=Freeware
+	set CHECK_OK=Version %%VA_INFO_VERSION%%
 	goto:eof

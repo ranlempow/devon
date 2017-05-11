@@ -98,7 +98,6 @@ if "%ValidateFailed%" == "1" (
 )
 pcall :BrickvGenEnv "%TARGET%" "%SETENV%"
         if not "%ERROR_MSG%" == "" goto :brickv_CMD_install_Error
-
 pcall :BrickvValidate
 if not "%ERROR_MSG%" == "" (
     call :PrintMsg warning warning validate error: %ERROR_MSG%
@@ -125,14 +124,16 @@ cmd /C exit /b 1
     rem set CHECK_CMD=gradle -v
     rem set CHECK_LINEWORD=Gradle
     rem set CHECK_OK=Gradle %VA_INFO_VERSION%
-    call "%TARGET%\set-env.cmd" --validate --quiet
-
+    if exist "%TARGET%\set-env.cmd" (
+        call "%TARGET%\set-env.cmd" --validate --quiet
+    ) else (
+        error("missing %TARGET%\set-env.cmd")
+    )
     if errorlevel 1 error("self validate failed")
 
     if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_FOLDER%\%CHECK_EXIST%" (
         error("exist validate failed %SCRIPT_FOLDER%\%CHECK_EXIST%")
     )
-
     if "%CHECK_LINEWORD%" == "" if "%CHECK_OK%" == "" (
         if "%CHECK_CMD%" == "" (
             rem echo nocheck
