@@ -4,7 +4,7 @@
 
 rem brickv install
 set inival=
-call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
+call :GetIniPairs %DEVON_CONFIG_PATH% "require"
 if not "%inival%" == "" set specs=%inival:;= %
 rem cmd /C "%SCRIPT_SOURCE%" :brickv_CMD_Update "%specs%" --vvv
 

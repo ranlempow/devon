@@ -48,6 +48,7 @@ goto :eof
 ::: function Main(_start_, cmd=,
                   args=....) delayedexpansion
 if "%cmd%" == "" (
+    rem TODO: if --help in args call CMD_help
     set _devcmd=shell
 ) else (
     set _devcmd=%cmd%
@@ -56,7 +57,7 @@ set _devargs=%args%
 set _start_=
 set cmd=
 set args=
-set DEVON_VERSION=1.0.0
+set DEVON_VERSION=1.0.1
 
 rem 如果還沒進入shell則先進入臨時性的shell
 if not "%_devcmd%" == "brickv" call :ActiveDevShell
@@ -121,7 +122,7 @@ set inival=
 
 call :GenerateCommandStubs
 
-call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
+call :GetIniPairs %DEVON_CONFIG_PATH% "require"
 if not "%inival%" == "" set specs=%inival:;= %
 
 call :EnterPostScript

@@ -5,6 +5,7 @@
 
 
 
+
 @if not "%~1" == "_start_" (
     set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
     set POST_ERRORLEVEL=0
@@ -28,6 +29,8 @@
 )
 
 @call :Main %*
+@if not "%ERROR_MSG%" == "" if "%CALL_STACK%" == "" goto :_Error
+@if not "%ERROR_MSG%" == ""  endlocal & ( set "ERROR_MSG=%ERROR_MSG%" & set "ERROR_SOURCE=%ERROR_SOURCE%" & set "ERROR_BLOCK=%ERROR_BLOCK%" & set "ERROR_LINENO=%ERROR_LINENO%" & set "ERROR_CALLSTACK=%ERROR_CALLSTACK%" & goto :eof )
 @goto :eof
 
 :EnterPostScript
@@ -43,7 +46,7 @@ del "%POST_SCIRPT%"
 set POST_SCIRPT=%_OLD_POST_SCIRPT%
 set _OLD_POST_SCIRPT=
 goto :eof
-::: function Main(_start_, cmd=shell,
+::: function Main(_start_, cmd=,
 :::                   args=....) delayedexpansion
 @setlocal  enabledelayedexpansion
 @echo off
@@ -69,7 +72,12 @@ goto :REALBODY_Main
 set _start_=%~1
 if "%_start_%" == "" endlocal & ( set "ERROR_MSG=Need argument _start_" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 shift
-set cmd=shell
+set test=%~1
+if not "%test:~0,1%" == "-" (
+    set cmd=%~1
+    shift
+)
+set test=
 set args=
 
 :ArgCheckLoop_Main
@@ -79,14 +87,6 @@ set next_prefix=%next:~0,1%
 if x%1x == xx goto :GetRestArgs_Main
 if x%2x == xx set next=__NONE__
 
-@if "%head%" == "--cmd" @(
-    @set cmd=%next%
-    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=dev-sh.cmd" & set "ERROR_BLOCK=Main" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
-    @shift
-    @shift
-    @goto :ArgCheckLoop_Main
-)
 @goto :GetRestArgs_Main
 
 :GetRestArgs_Main
@@ -101,16 +101,19 @@ if x%2x == xx set next=__NONE__
 :Main_Main
 @set head=
 @set next=
-set _devcmd=%cmd%
+if "%cmd%" == "" (
+    set _devcmd=shell
+) else (
+    set _devcmd=%cmd%
+)
 set _devargs=%args%
 set _start_=
 set cmd=
 set args=
-set DEVON_VERSION=1.0.0
+set DEVON_VERSION=1.0.1
 
-if not %_devcmd% == "brickv" call :ActiveDevShell
+if not "%_devcmd%" == "brickv" call :ActiveDevShell
 call :CMD_%_devcmd% %_devargs%
-
 endlocal & (
     set ERROR_MSG=%ERROR_MSG%
     set ERROR_SOURCE=%ERROR_SOURCE%
@@ -121,19 +124,19 @@ endlocal & (
 goto :eof
 
 
-
 :SubString
     @if "%Text%" EQU "" goto :ENDSubString
-    @for /f "delims=;" %%a in ("!Text!") do @set substring=%%a
+    @for /F "delims=;" %%A in ("!Text!") do @set substring=%%A
     @call goto %LoopCb%
     @if not "%LoopBreak%" == "" goto :ENDSubString
 
 :NextSubString
-    @set headchar=!Text:~0,1!
-    @set Text=!Text:~1!
-
-    @if "!Text!" EQU "" goto :SubString
-    @if "!headchar!" NEQ "%Spliter%" goto :NextSubString
+    @for /L %%I in (1, 1, 500) do @(
+        @set headchar=!Text:~0,1!
+        @set Text=!Text:~1!
+        @if "!Text!" == "" goto :SubString
+        @if "!headchar!" == "%Spliter%" goto :SubString
+    )
     @goto :SubString
 
 :ENDSubString
@@ -728,8 +731,6 @@ call :BasicCheck
 call :LoadConfigPaths
 call :GetTitle %PRJ_ROOT%
 
-set PATH=C:\__dev_setpath;%PATH%
-
 if exist "%PRJ_BIN%" set PATH=%PRJ_BIN%;%PATH%
 if exist "%PRJ_TOOLS%" set PATH=%PRJ_TOOLS%;%PATH%
 if exist "%PRJ_CONF%" set PATH=%PRJ_CONF%;%PATH%
@@ -739,34 +740,39 @@ call set inival=%inival%
 set PATH=%inival%;%PATH%
 
 
-rmdir /S /Q %PRJ_TMP%\command
-md %PRJ_TMP%\command
-set PATH=%PRJ_TMP%\command;%PATH%
+rmdir /S /Q "%PRJ_TMP%\command-pre" 1>nul 2>&1
+md "%PRJ_TMP%\command-pre" 1>nul 2>&1
+
 
 set inival=
 call :GetIniArray %DEVON_CONFIG_PATH% "dotfiles"
 (set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
 goto :SubString
 :call_dotfile
+    pushd "%PRJ_ROOT%"
     if exist "!substring!.cmd" call call "!substring!.cmd"
+    popd
     goto :NextSubString
 :exit_call_dotfile
 set inival=
 
+call :GenerateCommandStubs
+
 call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
 if not "%inival%" == "" set specs=%inival:;= %
+
 call :EnterPostScript
+if "%APPS_GLOBAL_DIR%" == ""set APPS_GLOBAL_DIR=%LOCALAPPDATA%\Programs
 call :brickv_CMD_Update "%specs%" --no-install --vvv
 call :ExecutePostScript
-
 
 if exist "%PRJ_CONF%\hooks\set-env.cmd" (
     call "%PRJ_CONF%\hooks\set-env.cmd"
 )
 
-set PATH=C:\__dev_endpath;%PATH%
-
-call :GenerateCommandStubs
+set PATH=%PRJ_TMP%\command;%PATH%
+rmdir /S /Q "%PRJ_TMP%\command" 1>nul 2>&1
+move "%PRJ_TMP%\command-pre" "%PRJ_TMP%\command" 1>nul 2>&1
 
 set DEVSH_ACTIVATE=%SCRIPT_SOURCE%
 goto :eof
@@ -968,13 +974,12 @@ goto :SubString
         set alias=%%a
         set alias_cmd=%%b
     )
-    echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command\%alias%.cmd
+    echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command-pre\%alias%.cmd
     goto :NextSubString
 :exit_create_alias_file
 set inival=
 
-echo.@"%SCRIPT_SOURCE%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
-
+echo.@"%SCRIPT_SOURCE%" %%* > %PRJ_TMP%\command-pre\dev.cmd
 
 set GitHooksScript=#^^!/usr/bin/env bash^
 
@@ -1477,7 +1482,7 @@ case $1 in^
 esac^
 
 
-echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
+echo.!GitHooksScript! > %PRJ_TMP%\command-pre\git-hooks
 
 
 set GitBashScript=@where git 1^>nul^
@@ -1507,8 +1512,8 @@ set GitBashScript=@where git 1^>nul^
 @endlocal^
 
 
-echo.!GitBashScript! > %PRJ_TMP%\command\bash.cmd
-echo.!GitBashScript! > %PRJ_TMP%\command\git-bash.cmd
+echo.!GitBashScript! > %PRJ_TMP%\command-pre\bash.cmd
+echo.!GitBashScript! > %PRJ_TMP%\command-pre\git-bash.cmd
 
 
 endlocal & (
@@ -1571,12 +1576,17 @@ set CMDSCRIPT=
 set CMDSCRIPT=!CMDSCRIPT!        (set no_window=)^&        (set no_welcome=)^&        (set CMDSCRIPT=)^&        (set CALL_STACK=)^&        (set SCRIPT_FOLDER=)^&        (set SCRIPT_SOURCE=)^&        (set DEVON_VERSION=)^&        (set _devcmd=)^&        (set _devargs=)^&
 
 
-where ansicon.exe 2>&1 1>nul
+call :EnterPostScript
+call :brickv_CMD_Update "ansicon clink" --no-install --vvv
+call :ExecutePostScript
+
+echo %VA_ANSICON_BASE%
+where ansicon.exe 1>nul 2>&1
 if not errorlevel 1 (
     set "CMDSCRIPT=!CMDSCRIPT!(ansicon.exe -p)^&"
 )
 
-where clink.bat 2>&1 1>nul
+where clink.bat 1>nul 2>&1
 if not errorlevel 1 (
     set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject 1>nul)^&"
 )
@@ -1585,8 +1595,7 @@ if not "%no_welcome%" == "1" (
     set "CMDSCRIPT=!CMDSCRIPT!(dev welcome)^&"
 )
 set "CMDSCRIPT=!CMDSCRIPT!(call)"
-
-pushd %PRJ_ROOT%
+pushd "%PRJ_ROOT%"
 echo on
 @if "%no_window%" == "1" @(
     @%ComSpec% /K "!CMDSCRIPT!"
@@ -1707,6 +1716,7 @@ if not "%UserName%" == "global" (
 git config --local core.autocrlf true
 git config --local push.default simple
 
+git hooks --install
 
 echo. > "%GitDir%/.devon"
 
@@ -2125,6 +2135,7 @@ goto :eof
 if not "%NN%" == "" goto :eof
 if "%NO_COLOR%" == "1" goto :eof
 if "%TEST_SHELL%" == "1" goto :eof
+if "%ANSICON%" == "" goto :eof
 
 for /F "skip=1 delims=" %%F in ('
     wmic PATH Win32_LocalTime GET Day^,Month^,Year /FORMAT:TABLE
@@ -2265,7 +2276,6 @@ if x%2x == xx set next=__NONE__
 :Main_CMD_update
 @set head=
 @set next=
-
 
 
 set inival=
@@ -2478,10 +2488,13 @@ set APPNAME=%REQUEST_APP%
 
 call :ExistsLabel %APPNAME%_init
 if "%LabelExists%" == "1" (
-    call :%APPNAME%_Init
+    call :%APPNAME%_init
 ) else (
      endlocal & ( set "ERROR_MSG=%APPNAME% not in installable list" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 )
+if "%ALLOW_EMPTY_LOCATION%" == "1" if "%REQUEST_LOCATION%" == "" set REQUEST_LOCATION=global
+
+
 
 if not "%PRJ_TMP%" == "" set TEMP=%PRJ_TMP%
 set VERSION_SOURCE_FILE=%TEMP%\source_%APPNAME%.ver.txt
@@ -2558,7 +2571,6 @@ if "%ValidateFailed%" == "1" (
 )
 call :BrickvGenEnv "%TARGET%" "%SETENV%"
         if not "%ERROR_MSG%" == "" goto :brickv_CMD_install_Error
-
 call :BrickvValidate
 if not "%ERROR_MSG%" == "" (
     call :PrintMsg warning warning validate error: %ERROR_MSG%
@@ -2635,14 +2647,16 @@ if x%2x == xx set next=__NONE__
 :Main_BrickvValidate
 @set head=
 @set next=
-call "%TARGET%\set-env.cmd" --validate --quiet
-
+if exist "%TARGET%\set-env.cmd" (
+    call "%TARGET%\set-env.cmd" --validate --quiet
+) else (
+     endlocal & ( set "ERROR_MSG=missing %TARGET%\set-env.cmd" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+)
 if errorlevel 1  endlocal & ( set "ERROR_MSG=self validate failed" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 
 if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_FOLDER%\%CHECK_EXIST%" (
      endlocal & ( set "ERROR_MSG=exist validate failed %SCRIPT_FOLDER%\%CHECK_EXIST%" & set "ERROR_SOURCE=brickv_CMD_install.cmd" & set "ERROR_BLOCK=" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
 )
-
 if "%CHECK_LINEWORD%" == "" if "%CHECK_OK%" == "" (
     if "%CHECK_CMD%" == "" (
 endlocal & (
@@ -2699,7 +2713,7 @@ goto :eof
 
 ::: function BrickvPrepare(
 :::                            spec=?, app=?, ver=x, patches=., arch=?,
-:::                            name=?, targetdir=?,
+:::                            name=?, targetdir=?, global_dir=?,
 :::                            system=N, global=N, local=N,
 :::                            dry=N, force=N, check_only=N, no_check=N, no_color=N,
 :::                            silent=N, quiet=N, v=N, vv=N, vvv=N, allow_empty_location=N,
@@ -2732,6 +2746,7 @@ set patches=.
 set arch=
 set name=
 set targetdir=
+set global_dir=
 set system=0
 set global=0
 set local=0
@@ -2805,6 +2820,14 @@ if x%2x == xx set next=__NONE__
 )
 @if "%head%" == "--targetdir" @(
     @set targetdir=%next%
+    @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
+    @shift
+    @shift
+    @goto :ArgCheckLoop_BrickvPrepare
+)
+@if "%head%" == "--global-dir" @(
+    @set global_dir=%next%
     @if "%next%" == "__NONE__" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @if "%next_prefix%" == "-" endlocal & ( set "ERROR_MSG=Need value after %head%" & set "ERROR_SOURCE=brickv_prepare.cmd" & set "ERROR_BLOCK=BrickvPrepare" & set "ERROR_LINENO=" & set "ERROR_CALLSTACK=%CALL_STACK%" & goto :eof )
     @shift
@@ -2915,8 +2938,21 @@ if "%system%" == "1" set REQUEST_LOCATION=system
 if "%global%" == "1" set REQUEST_LOCATION=global
 if "%local%" == "1" set REQUEST_LOCATION=local
 
-set GLOBAL_DIR=%LOCALAPPDATA%\Programs
-set LOCAL_DIR=%PRJ_BIN%
+if "%APPS_GLOBAL_DIR%" == "" (
+    if "%GLOBAL_DIR%" == "" set GLOBAL_DIR=%LOCALAPPDATA%\Programs
+) else (
+    if "%GLOBAL_DIR%" == "" set set GLOBAL_DIR=%APPS_GLOBAL_DIR%
+)
+
+if "%APPS_LOCAL_DIR%" == "" (
+    if not "%PRJ_BIN%" == "" (
+        set LOCAL_DIR=%PRJ_BIN%
+    ) else (
+        set LOCAL_DIR=%cd%
+    )
+) else (
+    set LOCAL_DIR=%APPS_LOCAL_DIR%
+)
 
 set REQUEST_NAME=%name%
 set REQUEST_TARGETDIR=%targetdir%
@@ -4012,6 +4048,7 @@ echo @goto :eof>> "%SETENV_TARGET%"
 
 call :WriteScript SetEnvEndTemplate
 @powershell -Command "(Get-Content '%SETENV_TARGET%') | ForEach-Object { $_ -replace '\$', '%%' } | Set-Content '%SETENV_TARGET%'"
+call :PrintMsg debug setenv %SETENV_TARGET%
 
 
 endlocal & (
@@ -4916,6 +4953,105 @@ fi^
 
     goto :eof
 
+:clink_init
+    set _RELEASE_URL=https://api.github.com/repos/mridgers/clink/releases
+    set ACCEPT=local global
+    set ALLOW_EMPTY_LOCATION=1
+    goto :eof
+
+:clink_versions
+    set "regex=browser_download_url.*download\/[0-9]*\.[0-9]*\.[0-9]*\/clink_[0-9]*\.[0-9]*\.[0-9]*\.zip"
+    FOR /L %%G IN (1,1,2) DO (
+        call :BrickvDownload "%_RELEASE_URL%?page=%%G" "%VERSION_SOURCE_FILE%"
+        if not "%ERROR_MSG%" == "" if "%CALL_STACK%" == "" goto :_Error
+        if not "%ERROR_MSG%" == ""  endlocal & ( set "ERROR_MSG=%ERROR_MSG%" & set "ERROR_SOURCE=%ERROR_SOURCE%" & set "ERROR_BLOCK=%ERROR_BLOCK%" & set "ERROR_LINENO=%ERROR_LINENO%" & set "ERROR_CALLSTACK=%ERROR_CALLSTACK%" & goto :eof )
+        FOR /F "tokens=* USEBACKQ" %%F IN (
+                `FINDSTR  /R /C:"%regex%" %VERSION_SOURCE_FILE%`) DO (
+            for /F "delims=: tokens=3" %%P in ("%%F") do (
+                set TARGET_URL=https:%%P
+            )
+            for /F "delims=/ tokens=8" %%P in ("!TARGET_URL!") do (
+                set TARGET_NAME=%%P
+            )
+            for /F "delims=_ tokens=2" %%A in ("!TARGET_NAME!") do (
+                set CLINK_VER=%%A
+            )
+            echo.clink=!CLINK_VER![.]$!TARGET_URL:~0,-1!>> "%VERSION_SPCES_FILE%"
+
+        )
+    )
+    goto :eof
+
+:clink_prepare
+	set APPVER=%MATCH_VER%
+	if "%REQUEST_NAME%" == "" set REQUEST_NAME=clink-%APPVER%
+	set DOWNLOAD_URL=%MATCH_CARRY%
+	goto :eof
+
+:clink_unpack
+	set SETENV=%SETENV%;$SCRIPT_FOLDER$
+	set UNPACK_METHOD=unzip
+	goto :eof
+
+:clink_validate
+	set CHECK_EXIST=
+	set CHECK_CMD=clink_x86
+	set CHECK_LINEWORD=Copyright
+	set CHECK_OK=Clink v%%VA_INFO_VERSION%%
+	goto:eof
+
+:ansicon_init
+    set _RELEASE_URL=https://api.github.com/repos/adoxa/ansicon/releases
+    set ACCEPT=local global
+    set ALLOW_EMPTY_LOCATION=1
+    goto :eof
+
+:ansicon_versions
+    set "regex=browser_download_url.*download\/v[0-9]*\.[0-9]*\/ansi[0-9]*\.zip"
+    FOR /L %%G IN (1,1,2) DO (
+        call :BrickvDownload "%_RELEASE_URL%?page=%%G" "%VERSION_SOURCE_FILE%"
+        if not "%ERROR_MSG%" == "" if "%CALL_STACK%" == "" goto :_Error
+        if not "%ERROR_MSG%" == ""  endlocal & ( set "ERROR_MSG=%ERROR_MSG%" & set "ERROR_SOURCE=%ERROR_SOURCE%" & set "ERROR_BLOCK=%ERROR_BLOCK%" & set "ERROR_LINENO=%ERROR_LINENO%" & set "ERROR_CALLSTACK=%ERROR_CALLSTACK%" & goto :eof )
+        FOR /F "tokens=* USEBACKQ" %%F IN (
+                `FINDSTR  /R /C:"%regex%" %VERSION_SOURCE_FILE%`) DO (
+            for /F "delims=: tokens=3" %%P in ("%%F") do (
+                set TARGET_URL=https:%%P
+            )
+            for /F "delims=/ tokens=7" %%P in ("!TARGET_URL!") do (
+                set TARGET_VER=%%P
+            )
+            set FOUND_VER=!TARGET_VER:~1!
+            echo.ansicon=!FOUND_VER![.]$!TARGET_URL:~0,-1!>> "%VERSION_SPCES_FILE%"
+
+        )
+    )
+    goto :eof
+
+:ansicon_prepare
+	set APPVER=%MATCH_VER%
+    if "%REQUEST_ARCH%" == "any" set REQUEST_ARCH=x64
+
+	if "%REQUEST_NAME%" == "" set REQUEST_NAME=ansicon-%APPVER%-%REQUEST_ARCH%
+	set DOWNLOAD_URL=%MATCH_CARRY%
+	goto :eof
+
+:ansicon_unpack
+    if "%REQUEST_ARCH%" == "x86" (
+	    set SETENV=%SETENV%;$SCRIPT_FOLDER$\x86
+    ) else (
+        set SETENV=%SETENV%;$SCRIPT_FOLDER$\x64
+    )
+    md "%TARGETDIR%\%REQUEST_NAME%" 1>nul 2>&1
+	call :Unzip "%INSTALLER%" "%TARGETDIR%\%REQUEST_NAME%"
+	goto :eof
+
+:ansicon_validate
+	set CHECK_EXIST=
+	set CHECK_CMD=ansicon.exe --help
+	set CHECK_LINEWORD=Freeware
+	set CHECK_OK=Version %%VA_INFO_VERSION%%
+	goto:eof
+
 
 ::: function brickv_CMD_list(spec=, args=....) delayedexpansion
 @setlocal  enabledelayedexpansion
@@ -5271,8 +5407,8 @@ call :IterMatchVersion "" 1
 set "SWITCH_NAME=%MATCH_APP%=%AppInfoVersion%"
 set SwitchSuccess=0
 if not "%AppPath%" == "" (
-    call :PrintMsg normal switch enable "%BW%!MATCH_APP!%NN%=!AppInfoVersion!" at %AppPath%
     echo.@call "%AppPath%\set-env.cmd" --set>> "%POST_SCIRPT%"
+    call :PrintMsg normal switch enable "%BW%!MATCH_APP!%NN%=!AppInfoVersion!" at %AppPath%
     set SwitchSuccess=1
 ) else (
     if not "%internal%" == "1" echo.@set "POST_ERRORLEVEL=1">> "%POST_SCIRPT%"
