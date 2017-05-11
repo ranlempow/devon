@@ -49,6 +49,7 @@ git config --local core.autocrlf true
 git config --local push.default simple
 
 git hooks --install
+
 echo. > "%GitDir%/.devon"
 
 ::: endfunc
