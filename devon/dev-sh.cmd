@@ -5,6 +5,7 @@
 @rem protective execute
 @rem if the execution is interrupted or exited, it run POST_SCIRPT to clean up
 @rem POST_SCIRPT is also use to return variable to environment
+
 @if not "%~1" == "_start_" (
     set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
     set POST_ERRORLEVEL=0
@@ -27,7 +28,7 @@
     goto :eof
 )
 
-@call :Main %*
+@ncall :Main %*
 @goto :eof
 
 :EnterPostScript
@@ -44,9 +45,13 @@ set POST_SCIRPT=%_OLD_POST_SCIRPT%
 set _OLD_POST_SCIRPT=
 goto :eof
 
-::: function Main(_start_, cmd=shell,
+::: function Main(_start_, cmd,
                   args=....) delayedexpansion
-set _devcmd=%cmd%
+if "%cmd%" == "" (
+    set _devcmd=shell
+) else (
+    set _devcmd=%cmd%
+)
 set _devargs=%args%
 set _start_=
 set cmd=
@@ -54,9 +59,8 @@ set args=
 set DEVON_VERSION=1.0.0
 
 rem 如果還沒進入shell則先進入臨時性的shell
-if not %_devcmd% == "brickv" call :ActiveDevShell
+if not "%_devcmd%" == "brickv" call :ActiveDevShell
 call :CMD_%_devcmd% %_devargs%
-
 ::: endfunc
 
 #include("spilt-string.cmd")
