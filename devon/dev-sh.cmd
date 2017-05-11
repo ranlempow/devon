@@ -214,9 +214,12 @@ goto :eof
     rem force setup for newly cloned project
     rem set CMDSCRIPT=!CMDSCRIPT!(dev setup)^&
 
-    rem ansicon feature
-    call :brickv_CMD_Update "ansicon clink" --no-install
+    call :EnterPostScript
+    call :brickv_CMD_Update "ansicon clink" --no-install --vvv
+    call :ExecutePostScript
 
+    rem ansicon feature
+    echo %VA_ANSICON_BASE%
     where ansicon.exe 1>nul 2>&1
     if not errorlevel 1 (
         set "CMDSCRIPT=!CMDSCRIPT!(ansicon.exe -p)^&"

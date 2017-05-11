@@ -46,6 +46,7 @@ echo @goto :eof>> "%SETENV_TARGET%"
 @REM 寫入腳本後段, 並且把'$'改成'%'
 call :WriteScript SetEnvEndTemplate
 @powershell -Command "(Get-Content '%SETENV_TARGET%') | ForEach-Object { $_ -replace '\$', '%%' } | Set-Content '%SETENV_TARGET%'"
+call :PrintMsg debug setenv %SETENV_TARGET%
 
 rem TODO: 移到更高層的地方
 rem @if not "%NOCHECK%" == "1" if exist "%VAILDATE_SCRIPT%" @(
