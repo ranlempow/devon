@@ -45,7 +45,7 @@ set POST_SCIRPT=%_OLD_POST_SCIRPT%
 set _OLD_POST_SCIRPT=
 goto :eof
 
-::: function Main(_start_, cmd,
+::: function Main(_start_, cmd=,
                   args=....) delayedexpansion
 if "%cmd%" == "" (
     set _devcmd=shell
@@ -87,9 +87,8 @@ if "%DEVSH_ACTIVATE%" == "%SCRIPT_SOURCE%" goto :eof
 call :BasicCheck
 call :LoadConfigPaths
 call :GetTitle %PRJ_ROOT%
-
 rem start set PATH
-set PATH=C:\__dev_setpath;%PATH%
+rem set PATH=C:\__dev_setpath;%PATH%
 
 rem add PRJ_BIN, PRJ_TOOLS to path
 if exist "%PRJ_BIN%" set PATH=%PRJ_BIN%;%PATH%
@@ -103,44 +102,43 @@ set PATH=%inival%;%PATH%
 
 
 rem prepare temporary command stub folder
-rmdir /S /Q %PRJ_TMP%\command
-md %PRJ_TMP%\command
-set PATH=%PRJ_TMP%\command;%PATH%
+rmdir /S /Q "%PRJ_TMP%\command-pre" 1>nul 2>&1
+md "%PRJ_TMP%\command-pre" 1>nul 2>&1
+
 
 rem set-env
-rem TODO: 注意相對路徑之間的問題
 set inival=
 call :GetIniArray %DEVON_CONFIG_PATH% "dotfiles"
 (set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
 goto :SubString
 :call_dotfile
+    pushd "%PRJ_ROOT%"
     if exist "!substring!.cmd" call call "!substring!.cmd"
+    popd
     goto :NextSubString
 :exit_call_dotfile
 set inival=
 
+call :GenerateCommandStubs
+
 call :GetIniPairs %DEVON_CONFIG_PATH% "dependencies"
 if not "%inival%" == "" set specs=%inival:;= %
-rem set _OLD_POST_SCIRPT=%POST_SCIRPT%
-rem set POST_SCIRPT=%TEMP%\devon_update_post_script.cmd
-rem copy /y NUL "%POST_SCIRPT%" >NUL
+
 call :EnterPostScript
+rem TODO: reconsider remove APPS_GLOBAL_DIR
+if "%APPS_GLOBAL_DIR%" == ""set APPS_GLOBAL_DIR=%LOCALAPPDATA%\Programs
 call :brickv_CMD_Update "%specs%" --no-install --vvv
 call :ExecutePostScript
-rem call "%POST_SCIRPT%"
-rem del "%POST_SCIRPT%"
-rem set POST_SCIRPT=%_OLD_POST_SCIRPT%
-rem set _OLD_POST_SCIRPT=
-
 
 if exist "%PRJ_CONF%\hooks\set-env.cmd" (
     call "%PRJ_CONF%\hooks\set-env.cmd"
 )
 
+set PATH=%PRJ_TMP%\command;%PATH%
 rem end set PATH
-set PATH=C:\__dev_endpath;%PATH%
-
-call :GenerateCommandStubs
+rem set PATH=C:\__dev_endpath;%PATH%
+rmdir /S /Q "%PRJ_TMP%\command" 1>nul 2>&1
+move "%PRJ_TMP%\command-pre" "%PRJ_TMP%\command" 1>nul 2>&1
 
 set DEVSH_ACTIVATE=%SCRIPT_SOURCE%
 goto :eof
@@ -174,24 +172,23 @@ goto :eof
             set alias=%%a
             set alias_cmd=%%b
         )
-        echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command\%alias%.cmd
+        echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command-pre\%alias%.cmd
         goto :NextSubString
     :exit_create_alias_file
     set inival=
 
-    echo.@"%SCRIPT_SOURCE%" --cmd %%* > %PRJ_TMP%\command\dev.cmd
-
+    echo.@"%SCRIPT_SOURCE%" %%* > %PRJ_TMP%\command-pre\dev.cmd
 
     #include(GitHooksScript, "git-hooks")
-    echo.!GitHooksScript! > %PRJ_TMP%\command\git-hooks
+    echo.!GitHooksScript! > %PRJ_TMP%\command-pre\git-hooks
 
     rem #include(SSHScript, "ssh")
     rem echo.!SSHScript! > %PRJ_TMP%\command\ssh
     rem echo.!SSHScript! > %PRJ_TMP%\command\scp
 
     #include(GitBashScript, "bash.cmd")
-    echo.!GitBashScript! > %PRJ_TMP%\command\bash.cmd
-    echo.!GitBashScript! > %PRJ_TMP%\command\git-bash.cmd
+    echo.!GitBashScript! > %PRJ_TMP%\command-pre\bash.cmd
+    echo.!GitBashScript! > %PRJ_TMP%\command-pre\git-bash.cmd
     rem echo.@bash -c ssh %* > %PRJ_TMP%\command\ssh.cmd
     rem echo.@bash -c scp %* > %PRJ_TMP%\command\scp.cmd
 
@@ -218,13 +215,15 @@ goto :eof
     rem set CMDSCRIPT=!CMDSCRIPT!(dev setup)^&
 
     rem ansicon feature
-    where ansicon.exe 2>&1 1>nul
+    call :brickv_CMD_Update "ansicon clink" --no-install
+
+    where ansicon.exe 1>nul 2>&1
     if not errorlevel 1 (
         set "CMDSCRIPT=!CMDSCRIPT!(ansicon.exe -p)^&"
     )
 
     rem clink feature
-    where clink.bat 2>&1 1>nul
+    where clink.bat 1>nul 2>&1
     if not errorlevel 1 (
         set "CMDSCRIPT=!CMDSCRIPT!(clink.bat inject 1>nul)^&"
     )
@@ -235,8 +234,7 @@ goto :eof
     )
     rem finish cmd script
     set "CMDSCRIPT=!CMDSCRIPT!(call)"
-
-    pushd %PRJ_ROOT%
+    pushd "%PRJ_ROOT%"
     echo on
     @if "%no_window%" == "1" @(
         @%ComSpec% /K "!CMDSCRIPT!"

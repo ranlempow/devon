@@ -4,10 +4,10 @@ rem TODO: Need test
 
 ::: function BrickvPrepare(
                            spec=?, app=?, ver=x, patches=., arch=?,
-                           name=?, targetdir=?,
+                           name=?, targetdir=?, global_dir=?,
                            system=N, global=N, local=N,
                            dry=N, force=N, check_only=N, no_check=N, no_color=N,
-                           silent=N, quiet=N, v=N, vv=N, vvv=N,
+                           silent=N, quiet=N, v=N, vv=N, vvv=N, allow_empty_location=N,
                            REST_ARGS_PRINT=....)
 
 @rem == init setting variables ==
@@ -28,12 +28,26 @@ if "%REQUEST_ARCH%" == "" (
 @rem 支援以下三種安裝地點, 預設地點由安裝程式決定
 @rem system: 需要root權限, 通常為官方預設的正常安裝程序
 @rem global & local: 使用者家目錄或是專案目錄
+if not "%allow_empty_location%" == "1" set REQUEST_LOCATION=global
 if "%system%" == "1" set REQUEST_LOCATION=system
 if "%global%" == "1" set REQUEST_LOCATION=global
 if "%local%" == "1" set REQUEST_LOCATION=local
 
-set GLOBAL_DIR=%LOCALAPPDATA%\Programs
-set LOCAL_DIR=%PRJ_BIN%
+if "%APPS_GLOBAL_DIR%" == "" (
+    if "%GLOBAL_DIR%" == "" set GLOBAL_DIR=%LOCALAPPDATA%\Programs
+) else (
+    if "%GLOBAL_DIR%" == "" set set GLOBAL_DIR=%APPS_GLOBAL_DIR%
+)
+
+if "%APPS_LOCAL_DIR%" == "" (
+    if not "%PRJ_BIN%" == "" (
+        set LOCAL_DIR=%PRJ_BIN%
+    ) else (
+        set LOCAL_DIR=%cd%
+    )
+) else (
+    set LOCAL_DIR=%APPS_LOCAL_DIR%
+)
 
 @REM 安裝的目錄名稱
 set REQUEST_NAME=%name%

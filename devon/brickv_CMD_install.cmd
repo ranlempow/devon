@@ -171,3 +171,4 @@ goto :eof
 #include("..\larges\gradle\install-global-new2.cmd")
 #include("..\larges\git\install-2.cmd")
 #include("..\larges\clink\install.cmd")
+#include("..\larges\ansicon\install.cmd")

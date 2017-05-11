@@ -113,8 +113,8 @@
     set "SWITCH_NAME=%MATCH_APP%=%AppInfoVersion%"
     set SwitchSuccess=0
     if not "%AppPath%" == "" (
-        call :PrintMsg normal switch enable "%BW%!MATCH_APP!%NN%=!AppInfoVersion!" at %AppPath%
         echo.@call "%AppPath%\set-env.cmd" --set>> "%POST_SCIRPT%"
+        call :PrintMsg normal switch enable "%BW%!MATCH_APP!%NN%=!AppInfoVersion!" at %AppPath%
         set SwitchSuccess=1
     ) else (
         if not "%internal%" == "1" echo.@set "POST_ERRORLEVEL=1">> "%POST_SCIRPT%"
