@@ -7,22 +7,20 @@
 @rem :exit_getstring
 @rem goto :eof
 
-
-@REM Do something with each substring
 :SubString
     @REM Stop when the string is empty
     @if "%Text%" EQU "" goto :ENDSubString
-    @for /f "delims=;" %%a in ("!Text!") do @set substring=%%a
+    @for /F "delims=;" %%A in ("!Text!") do @set substring=%%A
     @call goto %LoopCb%
     @if not "%LoopBreak%" == "" goto :ENDSubString
 
-@REM Now strip off the leading substring
 :NextSubString
-    @set headchar=!Text:~0,1!
-    @set Text=!Text:~1!
-
-    @if "!Text!" EQU "" goto :SubString
-    @if "!headchar!" NEQ "%Spliter%" goto :NextSubString
+    @for /L %%I in (1, 1, 500) do @(
+        @set headchar=!Text:~0,1!
+        @set Text=!Text:~1!
+        @if "!Text!" == "" goto :SubString
+        @if "!headchar!" == "%Spliter%" goto :SubString
+    )
     @goto :SubString
 
 :ENDSubString
