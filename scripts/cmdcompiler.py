@@ -72,7 +72,7 @@ def gen_return(parser, line, match):
         ret = ret.strip(accessor)
         if accessor == '':
             accessor = '%'
-        ret_output.append('    set {0}={1}{0}{1}'.format(ret, accessor))
+        ret_output.append('    set "{0}={1}{0}{1}"'.format(ret, accessor))
 
     if ret_output:
         output.append('endlocal & (')
@@ -302,13 +302,14 @@ def gen_function(parser, block, match):
     output.append(':Main_{}'.format(funcname))
     output.append('@set head=')
     output.append('@set next=')
+    output.append('@set next_prefix=')
     output.append(parser.parseline(body))
     return output
 
 
 
 gen_function.regex = re.compile(
-    r'(?:^|\n)'
+    r'(?:^)'
     r'(:+ function ([A-Za-z0-9_-]+)\(([A-Za-z0-9_,\=\?\ \.\n]*)\)(\s+extensions)?(\s+delayedexpansion)?)\n'
     r'(.*?)\n'
     r':+ endfunc', re.MULTILINE | re.DOTALL)
@@ -333,7 +334,7 @@ def gen_inline(parser, block, match):
     return [''.join(chars)]
 
 gen_inline.regex = re.compile(
-    r'(?:^|\n)'
+    r'(?:^)'
     r':+ inline\((.*?)\)\n'
     r'(.*?)\n'
     r':+ endinline', re.MULTILINE | re.DOTALL)
@@ -455,7 +456,8 @@ Parser.runtime_block_after = """
 @set ERROR_BLOCK=
 @set ERROR_LINENO=
 @set ERROR_CALLSTACK=
-@exit /b 1
+@cmd /s /c exit /b 1
+@goto :eof
 
 """
 
