@@ -1,8 +1,17 @@
+雙向整合thefuck和clink
+可能整合https://github.com/sindresorhus/pure
+可能整合gitsome
+雙向整合oh-my-zsh
+continuous integration tool整合
+bug and issue tracking整合?(可能不用, 因為網頁版太好用了)
+babun好像已經死了
+
+
 ## 單一shellscript
-方便安裝與較好的執行效率
+(O)方便安裝與較好的執行效率
 
 ## 安裝完成後顯示readme
-幫助使用者繼續下一步設定或安裝相關的app
+(O)幫助使用者繼續下一步設定或安裝相關的app
 
 ## 載入private user setting
 
@@ -12,27 +21,17 @@
 2. sublime
 
 ## gitignore強化
-Put your private ignore rules in .git/info/exclude. See gitignore(5).
-這個可能要等待git自己改良
+(X讓使用者自己做)Put your private ignore rules in .git/info/exclude. See gitignore(5).
+(X)這個可能要等待git自己改良
 
 
 ## private local branch
-http://stackoverflow.com/questions/13276909/how-to-do-a-local-only-commit-in-git
+(X)http://stackoverflow.com/questions/13276909/how-to-do-a-local-only-commit-in-git
 
 
 ## 安裝各種git外掛
-主要是整合submodule, github-lfs
-其實也不需要, 因為oh-my-zsh, 已經有了
-
+(O)主要是整合submodule, github-lfs
+(O)其實也不需要, 因為oh-my-zsh, 已經有了
 
 ## template產生器
-用來快速產生新的專案雛型
-
-## 與oh-my-zsh, babun整合
-
-## 各種document產生預覽整合?
-
-## bug and issue tracking整合?
-
-## continuous integration tool整合?
-
+(X)用來快速產生新的專案雛型

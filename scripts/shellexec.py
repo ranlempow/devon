@@ -84,7 +84,7 @@ class Execution:
 
     def __init__(self, cmd, env=None):
         self.cmd = cmd
-        self.env = env if env is not None else os.environ
+        self.env = env if env is not None else os.environ.copy()
         if self.minimal_env is not None:
             for k in self.minimal_env.keys():
                 if k not in self.env:
@@ -126,10 +126,16 @@ class Execution:
         proc.communicate()
         if 'TEST_SHELL' in env_after:
             del env_after['TEST_SHELL']
+
+        self.returncode = proc.returncode
+        if '_errorlevel' in env_after:
+            self.returncode = 1
+            del env_after['_errorlevel']
+
         self.before = env_before
         self.after = env_after
         self.diff = DictDiffer(env_after, env_before)
-        self.returncode = proc.returncode
+
 
         return self
 
@@ -180,14 +186,40 @@ cmd={}
         )
         return txt
 
-    def assertResult(self, case, *, ret=0, stdout='', stderr='',
-                     added={}, changed={}, removed=None):
+    def modifyEnv(self, **kwargs):
+        for k, v in kwargs.items():
+            if v == '' and k in self.env:
+                del self.env[k]
+            else:
+                self.env[k] = v
+
+    def assertSuccess(self, stdout='', stderr=''):
+        return self.assertResult(None, ret=0, stdout=stdout, stderr=stderr,
+                                 added=None, changed=None)
+
+    def assertFailure(self, stdout='', stderr=''):
+        return self.assertResult(None, ret=1, stdout=stdout, stderr=stderr,
+                                 added=None, changed=None)
+
+    def assertEnv(self, **kwargs):
+        return self.assertResult(None, ret=None, stdout=None, stderr=None,
+                                 added=None, changed=None, env=kwargs)
+
+    def assertResult(self, case=None, *, ret=0, stdout='', stderr='',
+                     added={}, changed={}, removed=None, env=None):
+        if not hasattr(self, 'diff'):
+            self.run()
+        case = case or getattr(self, 'case')
         try:
             if ret is not None:
                 case.assertEqual(ret, self.returncode, 'return code not match')
             if stdout is not None:
+                if isinstance(stdout, list):
+                    stdout = os.linesep.join(stdout + [''])
                 case.assertEqual(stdout, self.stdout, 'stdout not match')
             if stderr is not None:
+                if isinstance(stderr, list):
+                    stderr = os.linesep.join(stderr + [''])
                 case.assertEqual(stderr, self.stderr, 'stderr not match')
             if added is not None:
                 case.assertEqual(added, self.diff.added, 'environ added not match')
@@ -195,6 +227,14 @@ cmd={}
                 case.assertEqual(changed, self.diff.changed, 'environ changed not match')
             if removed is not None:
                 case.assertEqual(removed, self.diff.removed, 'environ removed not match')
+            if env is not None:
+                env_dict = {}
+                env_dict.update(self.diff.added)
+                env_dict.update(self.diff.changed)
+                env_dict.update(dict((k, '') for k in self.diff.removed_key))
+                env_dict.update(dict((k, None) for k, v in env.items() if v is None))
+                case.assertEqual(env, env_dict, 'environ not match')
+
         except AssertionError as e:
             print(self.stderr)
             e.__traceback__ = e.__traceback__
@@ -215,7 +255,7 @@ cmd={}
         """
 
         # construct the command that will alter the environment
-        cmds_list = cmds_list + ('@echo ' + cls.tag.decode('utf-8'), '@set')
+
         cmdstr_list = []
         for cmds in cmds_list:
             if not isinstance(cmds, (list, tuple)):
@@ -228,8 +268,14 @@ cmd={}
             cmdstr = ' '.join(cmds)
             cmdstr_list.append(cmdstr)
 
+        cmds_list = ('({0} || @set _errorlevel="1")'.format(' & '.join(cmdstr_list)),
+                     '@echo ' + cls.tag.decode('utf-8'),
+                     '@set',
+                     )
+        cmdstr_list = cmds_list
+
         # construct a cmd.exe command to do accomplish this
-        final_cmd = ' && '.join(cmdstr_list)
+        final_cmd = ' & '.join(cmdstr_list)
         cmd = 'cmd.exe /s /c {}'.format(final_cmd)
         return cmd
 
@@ -245,12 +291,9 @@ Execution.minimal_env = Execution.get_minimal_env()
 
 class ScriptExecution(Execution):
     def __init__(self, script, args=[], env=None):
+        self.script = script
         cmd = Execution.get_cmd_from_cmds_list(
             ['@call {}.cmd'.format(script.replace('/', '\\'))] + args)
-        # if self.minimal_env is not None and env is not None:
-        #     for k in self.minimal_env.keys():
-        #         if k not in env:
-        #             env[k] = self.minimal_env[k]
         super().__init__(cmd, env=env)
 
 
@@ -266,16 +309,20 @@ class ShellCompiled():
         os.chdir(cwd or self.testdir)
         return ScriptExecution(self.compiled_path[:-4], args, env).run()
 
-    def call(self, label, args=[], cwd=None, env=None):
+    def create_for_call(self, label, args=[], cwd=None, env=None):
         os.chdir(cwd or self.testdir)
         subroutine_path = self.compiled_path[:-4] + label + '.cmd'
         with open(subroutine_path, 'w', encoding='utf-8') as fp:
             fp.write('@set TEST_SHELL=1\n')
+            fp.write('@echo off\n')
             fp.write('@call :{} %*\n'.format(label))
-            fp.write('@if not "%ERROR_MSG%" == "" @goto :_Error\n')
+            fp.write('@if not "%EMSG%" == "" @call :_Error\n')
             fp.write('@goto :eof\n')
             fp.write(self.script_body)
-        return ScriptExecution(subroutine_path[:-4], args, env).run()
+        return ScriptExecution(subroutine_path[:-4], args, env)
+
+    def call(self, label, args=[], cwd=None, env=None):
+        return self.create_for_call(label, args, cwd, env).run()
 
 
 def _test():

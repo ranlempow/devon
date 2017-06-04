@@ -5,7 +5,7 @@ import sys
 import unittest
 import shutil
 
-from .utils import ScriptTestCase
+from .utils import ScriptTestCase, Removed
 
 
 class Test(ScriptTestCase):
@@ -15,7 +15,7 @@ class Test(ScriptTestCase):
         return {
             # 'DRYRUN':
             'FORCE': '0',
-            # 'LOCAL_DIR': 'C:\\',
+            'LOCAL_DIR': 'C:\\Users\\ran\\Desktop\\brickv\\var\\brickv_prepare',
             'GLOBAL_DIR': 'C:\\Users\\ran\\AppData\\Local\\Programs',
             # 'CHECKONLY':
             # 'NOCHECK':

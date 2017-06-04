@@ -2,7 +2,7 @@
 import os
 import unittest
 
-from .utils import ScriptTestCase
+from .utils import ScriptTestCase, Removed
 
 
 class Test(ScriptTestCase):
@@ -12,7 +12,7 @@ class Test(ScriptTestCase):
         url = 'https://raw.githubusercontent.com/ranlempow/fonts/master/README.md'
         output= os.path.join(self.testdir, 'README.md')
         self.script.call('BrickvDownload', [url, output]).assertResult(
-            self, stdout='brickv fetch ' + url + '\r\n')
+            self, stdout='brickv fetch ' + url + os.linesep)
         self.assertEqual(open(output).read(), '# fonts')
 
     def test_BrickvDonwload_faild1(self):

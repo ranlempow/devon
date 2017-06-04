@@ -59,7 +59,6 @@ def gen_return(parser, line, match):
     values = match.group(1)
     values = values.lstrip()
     rets = [p.strip() for p in values.split(',')]
-    rets += ['%ERROR_MSG%', '%ERROR_SOURCE%', '%ERROR_BLOCK%', '%ERROR_LINENO%', '%ERROR_CALLSTACK%']
     ret_output = []
     for ret in rets:
         if ret == '':
@@ -72,16 +71,12 @@ def gen_return(parser, line, match):
         ret = ret.strip(accessor)
         if accessor == '':
             accessor = '%'
-        ret_output.append('    set "{0}={1}{0}{1}"'.format(ret, accessor))
+        ret_output.append('set "{0}={1}{0}{1}"'.format(ret, accessor))
 
-    if ret_output:
-        output.append('endlocal & (')
-        output.extend(ret_output)
-        output.append(')')
-    else:
-        output.append('endlocal')
-    output.append('goto :eof')
-    return output
+    return [('endlocal & (if "%EMSG%" == "" ('
+             + (('\n' + '\n'.join(ret_output) + '\n') if ret_output else '') +
+             'goto :eof) else (set "EMSG=%EMSG%" & set "ESRC=%ESRC%" & set "ETRA=%ETRA%" & goto :eof))')]
+
 gen_return.regex = re.compile(r'^\s*return(.*)$')
 
 
@@ -101,8 +96,8 @@ def gen_call(parser, line, match):
     output = []
     output.append(code + 'call {call_line}'.format(call_line=call_line))
     if not is_protected:
-        output.append(code + 'if not "%ERROR_MSG%" == "" if "%CALL_STACK%" == "" goto :_Error')
-        output.append(code + 'if not "%ERROR_MSG%" == "" ' + parser.pass_error())
+        output.append(code + 'if not "%EMSG%" == "" if "%CTRA%" == "" goto :_Error')
+        output.append(code + 'if not "%EMSG%" == "" ' + parser.pass_error())
     return output
 gen_call.regex = re.compile(r'^(.*?)(p|n)call (.*?)$')
 
@@ -138,15 +133,14 @@ line_handlers = [gen_return, gen_error, gen_debug, gen_call, gen_remove_comment,
 
 def gen_function(parser, block, match):
     '''
-    1. fixed argument:                NAME
-    2. optional argument:             NAME=
-    3. optional switch default off:   NAME=N
-    4. optional switch default on:    NAME=Y
-    5. optional keyed argument:       NAME=?
-    6. optional keyed argument:       NAME=VALUE
-    7. variable argument:             NAME=...
-    8. varargs with origin:           NAME=....
-    8. varargs with no quote:         NAME=.....
+    1. fixed argument:                    NAME
+    2. optional argument:                 NAME=
+    3. optional switch default off:       NAME=N
+    5. optional keyed argument(require):  NAME=?
+    6. optional keyed argument:           NAME=VALUE
+    7. variable argument:                 NAME=...
+    8. varargs with origin:               NAME=....
+    8. varargs with no quote:             NAME=.....
 
     example:
     ::: function download(Url, Output=, Cookie=?, SkipExists=N, Key=Value, Args=...)
@@ -158,7 +152,7 @@ def gen_function(parser, block, match):
     if all(line.startswith('    ') for line in body.split('\n') if line.strip()):
         body = '\n'.join(line[4:] for line in body.split('\n'))
 
-    # add return at body end
+    # # add return at body end
     body += '\nreturn'
 
     extensions = bool(extensions)
@@ -166,143 +160,142 @@ def gen_function(parser, block, match):
     output = []
     output.extend((ln if ln.startswith(':::') else '::: ' + ln) for ln in defline.split('\n'))
 
-    def enterlocal():
-        output.append('@setlocal {} {}'.format(
-            'enableextensions' if extensions else '',
-            'enabledelayedexpansion' if delayedexpansion else ''))
-        if not parser.debug:
-            output.append('@echo off')
-        output.append('@set ERROR_MSG=')
-        output.append('@set ERROR_SOURCE=')
-        output.append('@set ERROR_BLOCK=')
-        output.append('@set ERROR_LINENO=')
-        output.append('@set ERROR_CALLSTACK=')
-
-    # nature enter
-    enterlocal()
-    output.append('call :REALBODY_{funcname} %*'.format(funcname=funcname))
-    output.append('if not "%ERROR_MSG%" == "" goto :_Error')
-    output.append('goto :eof')
-    # call enter
+    extensions = True
+    delayedexpansion = True
     output.append(':{funcname}'.format(funcname=funcname))
-    enterlocal()
-    output.append('set CALL_STACK={funcname} %CALL_STACK%'.format(funcname=funcname))
-    output.append('goto :REALBODY_{funcname}'.format(funcname=funcname))
-
-    # fianl enter
-    output.append(':REALBODY_{funcname}'.format(funcname=funcname))
+    output.append('@setlocal {} {}'.format(
+        'enableextensions' if extensions else '',
+        'enabledelayedexpansion' if delayedexpansion else ''))
+    if not parser.debug:
+        output.append('@echo off')
+    output.append('@set "EMSG=" & set "ESRC=" & set "ETRA="')
+    output.append('@set "CSRC={file} {func}" & set "CTRA={func} %CTRA%"'.format(
+                  func=funcname, file=os.path.basename(parser.path)))
 
     parameters = [p.strip().split('=',1) for p in parameters.replace('\n', '').split(',')]
     parameters = [param for param in parameters if param != ['']]
+
+    any_require_option = False
+    fixed_min = 0
+    fixed_parameters = []
     for param in parameters[:]:
         if len(param) == 1:
             # fixed
-            output.append('set {}=%~1'.format(param[0]))
-            output.append('if "%{}%" == ""'.format(param[0]) + parser.error_str('Need argument {}'.format(param[0]), blockname=funcname))
-            output.append('shift')
+            fixed_min += 1
+            parameters.pop(0)
+            fixed_parameters.append(param)
         elif param[1] == '':
             # optional
-            output.append('set test=%~1')
-            output.append('if not "%test:~0,1%" == "-" (')
-            output.append('    set {}=%~1'.format(param[0]))
-            output.append('    shift')
-            output.append(')')
-            output.append('set test=')
-        else:
-            # keyword
-            break
-        parameters.pop(0)
+            parameters.pop(0)
+            fixed_parameters.append(param)
+            output.append('set {}='.format(param[0]))
+        elif param[1] == '?':
+            any_require_option = True
+
+    output.append('@( set _pos=0' +
+                  ' & set _fmin={})'.format(fixed_min))
 
     for param in parameters:
         name, value = param
         if value == 'N':
-            output.append('set {}=0'.format(name))
-        elif value == 'Y':
-            output.append('set {}=1'.format(name))
+            output.append('set {}='.format(name))
         elif value in ['?', '...', '....', '.....']:
             output.append('set {}='.format(name))
         else:
             output.append('set {}={}'.format(name, value))
 
+
     output.extend([
         '',
-        ':ArgCheckLoop_{}'.format(funcname),
-        'set head=%~1',
-        'set next=%~2',
-        'set next_prefix=%next:~0,1%'
-        '',
-        'if x%1x == xx goto :GetRestArgs_{}'.format(funcname),
-        'if x%2x == xx set next=__NONE__',
-        '',
+        ':parg_{}'.format(funcname),
+    ])
+    if any_require_option:
+        output.extend([
+            'if defined _require (',
+            '    if "!_next!" == "" goto :parg_noarg_err',
+            '    if "!_next:~0,1!" == "-" goto :parg_noarg_err',
+            '    set _require=',
+            ')',
+        ])
+    output.extend([
+        'set _head=%~1',
+        'set _next=%~2',
+        # '@echo [!_head!][!_next!] 1>&2',
+        '@if not defined _head goto :pargdone_{}'.format(funcname),
     ])
 
 
     varargs = None
-    for param in parameters:
+    varargs_quote = 'Origin'
+    for param in parameters[:]:
         if varargs:
             raise Exception('varargs must be last parameters')
+
         name, value = param
         prefixname = name.lower().replace('_', '-')
         if value == 'N':
-            output.append('@if "%head%" == "--{}" @('.format(prefixname))
-            output.append('    @set {}=1'.format(name))
-            output.append('    @shift')
-            output.append('    @goto :ArgCheckLoop_{}'.format(funcname))
-            output.append(')')
-        elif value == 'Y':
-            output.append('@if "%head%" == "--{}" @('.format(prefixname))
-            output.append('    @set {}=0'.format(name))
-            output.append('    @shift')
-            output.append('    @goto :ArgCheckLoop_{}'.format(funcname))
-            output.append(')')
-        elif value == '...':
+            output.append('@if "!_head!" == "--{}"'.format(prefixname) +
+                          ' @(set "{}=1"'.format(name) +
+                          ' & shift' +
+                          ' & goto :parg_{})'.format(funcname))
 
-            output.append('@goto :GetRestArgs_{}'.format(funcname))
+        elif value == '...':
             varargs = name
             varargs_quote = True
         elif value == '....':
-            output.append('@goto :GetRestArgs_{}'.format(funcname))
             varargs = name
             varargs_quote = 'Origin'
         elif value == '.....':
-            output.append('@goto :GetRestArgs_{}'.format(funcname))
             varargs = name
             varargs_quote = False
         elif value:
-            output.append('@if "%head%" == "--{}" @('.format(prefixname))
-            output.append('    @set {}=%next%'.format(name))
-            output.append('    @if "%next%" == "__NONE__"' + parser.error_str('Need value after %head%', blockname=funcname))
-            output.append('    @if "%next_prefix%" == "-"' + parser.error_str('Need value after %head%', blockname=funcname))
-            output.append('    @shift')
-            output.append('    @shift')
-            output.append('    @goto :ArgCheckLoop_{}'.format(funcname))
-            output.append(')')
+            output.append('@if "!_head!" == "--{}"'.format(prefixname) +
+                          ' @(set "{}=!_next!"'.format(name) +
+                          ' & shift & shift' +
+                          ' & set _require=1' +
+                          ' & goto :parg_{})'.format(funcname))
 
-    output.append('')
     if not varargs:
-        output.append(parser.error_str('Unkwond option "%head%"', blockname=funcname))
-    output.append(':GetRestArgs_{funcname}'.format(funcname=funcname))
+        output.append('@if "!_head:~0,1!" == "-"'
+                      # ' if not "!_head:~2,3!" == ""'
+                      ' goto :parg_optover_err')
+
+    fixed_count=0
+    for param in fixed_parameters:
+        output.append('@if %_pos% == {}'.format(fixed_count) +
+                      ' @(set "{}=!_head!"'.format(param[0]) +
+                      ' & shift' +
+                      ' & set /a "_pos+=1"' +
+                      ' & goto :parg_{})'.format(funcname))
+        fixed_count +=1
+
+    output.append(('@if defined _rest @('
+                   '    set _rest=!_rest! {0}'
+                   ') else ('
+                   '    set _rest={0}'
+                   ')').format(
+                        '"%~1"' if varargs_quote is True else
+                        '%1'    if varargs_quote == 'Origin' else
+                        '%~1'))
+    output.append('@shift')
+    output.append('@goto :parg_{}'.format(funcname))
 
 
+    output.append(':pargdone_{}'.format(funcname))
+    if fixed_min > 0:
+        output.append('@if %_pos% LSS %_fmin% goto :parg_posunder_err')
     if varargs:
-        varargs_symbol = ('"%~1"' if varargs_quote is True else
-                          '%1' if varargs_quote == 'Origin' else
-                          '%~1')
-        output.extend("""
-@set {varargs}={varargs_symbol}
-@shift
-:GetRestArgsLoop_{funcname}
-@if "%~1" == "" @goto :Main_{funcname}
-@set {varargs}=%{varargs}% {varargs_symbol}
-@shift
-@goto :GetRestArgsLoop_{funcname}""".format(varargs_symbol=varargs_symbol,
-                                            varargs=varargs, funcname=funcname).split('\n'))
-
+        output.append('set "{}=!_rest!"'.format(varargs))
+    else:
+        output.append('@if defined _rest goto :parg_posover_err')
+    output.append('@( set "_head="'
+                  ' & set "_next="'
+                  ' & set "_require="'
+                  ' & set "_pos="'
+                  ' & set "_fmin="'
+                  ' & set "_rest=")')
 
     output.append(':Main_{}'.format(funcname))
-    output.append('@set head=')
-    output.append('@set next=')
-    output.append('@set next_prefix=')
     output.append(parser.parseline(body))
     return output
 
@@ -408,27 +401,11 @@ class Parser:
         return ''.join(blocks)
 
     def pass_error(self):
-        return (' endlocal & ('
-                ' set "ERROR_MSG=%ERROR_MSG%" &'
-                ' set "ERROR_SOURCE=%ERROR_SOURCE%" &'
-                ' set "ERROR_BLOCK=%ERROR_BLOCK%" &'
-                ' set "ERROR_LINENO=%ERROR_LINENO%" &'
-                ' set "ERROR_CALLSTACK=%ERROR_CALLSTACK%" &'
-                ' goto :eof )'
-                )
+        return (' endlocal & (if "%EMSG%" == "" (goto :eof) else ('
+                'set "EMSG=%EMSG%" & set "ESRC=%ESRC%" & set "ETRA=%ETRA%" & goto :eof))')
 
     def error_str(self, msg, lineno=None, blockname=None):
-        return (' endlocal & ('
-                ' set "ERROR_MSG={}" &'
-                ' set "ERROR_SOURCE={}" &'
-                ' set "ERROR_BLOCK={}" &'
-                ' set "ERROR_LINENO={}" &'
-                ' set "ERROR_CALLSTACK=%CALL_STACK%" &'
-                ' goto :eof )').format(
-            msg,
-            os.path.basename(self.path),
-            blockname if blockname is not None else '',
-            lineno if lineno is not None else '')
+        return ' endlocal & (set "EMSG={}" & set "ESRC=%CSRC%" & set "ETRA=%CTRA%" & goto :eof)'.format(msg)
 
     def debug_str(self, msg):
         return ' @if not "%DEBUG%" == "" @echo {}'.format(msg)
@@ -441,21 +418,30 @@ Parser.runtime_block_before = """
 """
 
 Parser.runtime_block_after = """
+:parg_noarg_err
+endlocal & (set "EMSG=option requires an argument -- %_head%" & set "ESRC=%CSRC%" & set "ETRA=%CTRA%" & goto :eof)
+
+:parg_posunder_err
+endlocal & (set "EMSG=takes %_fmin% positional arguments but %_pos% were given" & set "ESRC=%CSRC%" & set "ETRA=%CTRA%" & goto :eof)
+
+:parg_posover_err
+endlocal & (set "EMSG=too many positional arguments -- %_rest%" & set "ESRC=%CSRC%" & set "ETRA=%CTRA%" & goto :eof)
+
+:parg_optover_err
+endlocal & (set "EMSG=unrecognized option -- %_head%" & set "ESRC=%CSRC%" & set "ETRA=%CTRA%" & goto :eof)
+
+
 
 :_ProtectError
 @goto :eof
 
 :_Error
-@echo ERROR: %ERROR_MSG%^
+@echo ERROR: %EMSG%^
 
-    at %ERROR_SOURCE%:%ERROR_BLOCK%:%ERROR_LINENO%^
+    at %ESRC%^
 
-    stacktrace: %ERROR_CALLSTACK% 1>&2
-@set ERROR_MSG=
-@set ERROR_SOURCE=
-@set ERROR_BLOCK=
-@set ERROR_LINENO=
-@set ERROR_CALLSTACK=
+    stacktrace: %ETRA% 1>&2
+@set "EMSG=" & set "ESRC=" & set "ETRA="
 @cmd /s /c exit /b 1
 @goto :eof
 

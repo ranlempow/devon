@@ -83,8 +83,8 @@ return %Filename%
     if not "%REQUEST_NAME%" == "" set TARGET_NAME=%REQUEST_NAME%
 
     if not "%REQUEST_TARGETDIR%" == "" set TARGETDIR=%REQUEST_TARGETDIR%
-    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "global" set TARGETDIR=%GLOBAL_DIR%
-    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "local" set TARGETDIR=%LOCAL_DIR%
+    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "global" set TARGETDIR=%BRICKV_GLOBAL_DIR%
+    if "%TARGETDIR%" == "" if "%REQUEST_LOCATION%" == "local" set TARGETDIR=%BRICKV_LOCAL_DIR%
     rem echo TARGET_NAME:%TARGET_NAME%
     rem echo TARGETDIR:%TARGETDIR%
     rem echo REQUEST_LOCATION:%REQUEST_LOCATION%

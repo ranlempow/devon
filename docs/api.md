@@ -1,50 +1,3 @@
-[-$get-args]
-
-$versions(URL, REGEX)
-    download version file and parser it
-[-$fetchver]
-
-[-$semver]
-
-
-$require(SPEC, runtime=N)
-    set requirement of this app
-
-[-$resolve]
-
-
-$appver VERNAME
-$installer(URL, FILENAME, MSI=N)
-    set installer file name and its parent url
-
-[-$before-install]
-[-$auto-install]
-
--$download
-    download file
--$movepath
-    move file
--$unzip
-    unzip file
--$msi-execute
-    msi file
-
-$env-set VAR=VALUE
-$env-path PATH
-$check --cmd CMD --line-word WORD --match MATCH
-$check --path PATH
-$check --bin PATH
-[-$gen-env]
-[-$job-exit]
-
-[-$search-apps]
-[-$list-apps]
--$print
-    print message
-
-目前只有gradle是完成度高的
-其他的請參考gradle的格式來完成
-
 
 manage
 =================================
@@ -52,12 +5,14 @@ brickv <command> [<args>] [<options>]
 
 install [<app-list>] [<options>] [<app-list>] [<options>]
   -a, --all               Install all the apps listed in profile
-  --switch
+  --no-switch
   --save
 
 uninstall                 simply remove
   -a, --all               Uninstall all the apps listed in profile
   -y, --yes               Don't confirmation
+
+upgrade
 
 switch/enable
   --save
@@ -85,6 +40,24 @@ Options:
   --patch-moved           Should use after moving app base folder
   --info                  Show information
   --validate              Check properly installed
+  --upgrade               使用者自己重新安裝??
+
+同一個應用程式只能夠同時間 '--set' 其中一個, 後來啟用的會把前一個版本給 '--clear'.
+'--validate'加上'--test'可以加跑該應用程式的所有測試案例.
+不做--patch-move, 使用者可以自己重新安裝
+
+TODO: 可能要對set-env做shell gaurding
+VA_INFO_APPNAME: 應用程式的名稱
+VA_INFO_VERSION: 應用程式的版本
+VA_INFO_PATCHES: (選用)應用程式所套用的補釘
+VA_INFO_DEPENDS: 應用程式所依賴的其他應用程式(目前只允許一個)
+
+@set CHECK_EXIST=
+@set CHECK_CMD=ansicon.exe --help
+@set CHECK_LINEWORD=Freeware
+@set CHECK_OK=Version %VA_INFO_VERSION%
+
+
 
 
 large_dependency
@@ -103,7 +76,7 @@ location
 [default]
 local
 global
-system
+(X)system
 
 
 application

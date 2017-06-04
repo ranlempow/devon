@@ -36,7 +36,7 @@ rem Test Ok
 ::: endfunc
 
 
-::: function PrintVersion(PRINT_LEVEL, MSG_TITLE, PV_APP, PV_VER, PV_ARCH, PV_PATCHES)
+::: function PrintVersion(PRINT_LEVEL, MSG_TITLE, PV_APP, PV_VER=, PV_ARCH=, PV_PATCHES=)
     call :PreparePrint "%PRINT_LEVEL%" "%MSG_TITLE%"
     call :ImportColor
 

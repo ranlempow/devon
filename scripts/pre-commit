@@ -1,0 +1,70 @@
+#!/bin/sh
+
+
+# File size limit is meant to be configured through 'hooks.filesizelimit' setting
+filesizelimit=$(git config hooks.filesizelimit)
+commitsizelimit=$(git config hooks.commitsizelimit)
+commitnewfileslimit=$(git config hooks.commitnewfileslimit)
+
+# If we haven't configured a file size limit, use default value of about 1M
+if [ -z "$filesizelimit" ]; then
+  filesizelimit=1000000
+fi
+if [ -z "$commitsizelimit" ]; then
+  commitsizelimit=4000000
+fi
+if [ -z "$commitfileslimit" ]; then
+  commitfileslimit=25
+fi
+
+
+LimitError () {
+  msg=$1
+  echo "Error: Too large push attempted." >&2
+  echo  >&2
+  echo "$msg" >&2
+  echo "Contact configuration team if you really need to do this." >&2
+  echo "Maybe you can try to split large commit to more small commits."
+  echo "Or use 'git commit --no-verify' to bypass limit check"
+}
+
+eval "git diff-index --cached HEAD" | {
+  added=0
+  totalsize=0
+
+  while read A B Before After M P
+  do
+    case $M in
+      M)
+        filesize=$(git cat-file -s $After)
+        bytes=$(( $filesize - $(git cat-file -s $Before) ))
+        ;;
+      A)
+        filesize=$(git cat-file -s $After)
+        bytes=$filesize
+        added=$(( $added + 1 ))
+        ;;
+      D)
+        bytes=0
+        ;;
+      *)
+        echo >&2 warning: unhandled mode $M in \"$A $B $Before $After $M $P\"
+        continue
+        ;;
+    esac
+    if [ $filesize -gt $filesizelimit ]; then
+      LimitError "File size limit is $filesizelimit, you tried to push file named $P of size $filesize."
+      exit 1
+    fi
+    totalsize=$(( $totalsize + $bytes ))
+  done
+  if [ $totalsize -gt $commitsizelimit ]; then
+    LimitError "Total file size limit is $commitsizelimit, but total size $totalsize you tried to push."
+    exit 1
+  fi
+  if [ $added -gt $commitfileslimit ]; then
+    LimitError "Total new added files limit is $commitfileslimit, but $added new files you tried to push."
+    exit 1
+  fi
+  # echo total $totalsize bytes, added $added files
+}

@@ -21,8 +21,8 @@
 ::: endfunc
 
 ::: function brickv_CMD_versions(spec, args=....) delayedexpansion
-    call :BrickvPrepare --spec %spec% %args%
-    call :brickv_CMD_install --only-versions --spec %spec% %args%
+    rem call :BrickvPrepare --spec %spec% %args%
+    call :brickv_CMD_install %spec% --only-versions %args%
     FOR /F "delims=$ tokens=1 USEBACKQ" %%F IN ("%VERSION_SPCES_FILE%") do (
         echo %%F
     )
@@ -33,11 +33,16 @@
     set Installs=
     set Switches=
     set Faileds=
-    set PassToInstall=%args%
 
     rem Switch
     set NotFounds=
     set targets=%specs: =#%
+
+    ncall :BrickvPrepare "=x" %args%
+    call :ImportColor
+    set VERSION_SPCES_FILE=%TEMP%\spces-list.ver.txt
+    set MATCH_SPCES_FILE=%TEMP%\spces-match.ver.txt
+    call :DiscoverApp
 
     :brickv_CMD_Update_switch_loop
     for /F "delims=# tokens=1*" %%A IN ("%targets%") do (
@@ -67,7 +72,7 @@
 
     set FailedsString=%Faileds:#= %
     if not "%Faileds%" == "" call :PrintMsg error error failure apps: "%FailedsString%"
-    return "%FailedsString%"
+    return %FailedsString%
 
 
     :brickv_CMD_Update_switch
@@ -88,7 +93,7 @@
 
     :brickv_CMD_Update_install
     if "%~1" == "" goto :eof
-    pcall :brickv_CMD_install --spec "%~1" %PassToInstall%
+    pcall :brickv_CMD_install "%~1" %args%
     if not "%ERROR_MSG%" == "" (
         call :PrintMsg error error %ERROR_MSG%
         if "%Faileds%" == "" (set Faileds=%~1) else (set Faileds=%Faileds%#%~1)
@@ -100,18 +105,23 @@
 ::: endfunc
 
 ::: function brickv_CMD_switch(spec, internal=N, args=....) delayedexpansion
-    call :BrickvPrepare --spec "%spec%" --allow-empty-location %args%
+    rem call :BrickvPrepare --spec "%spec%" --allow-empty-location %args%
+    call :BrickvPrepare "%spec%" %args%
     set args=
     set AppPath=
-    call :ImportColor
-
-    set VERSION_SPCES_FILE=%TEMP%\spces-list.ver.txt
-    set MATCH_SPCES_FILE=%TEMP%\spces-match.ver.txt
-    call :DiscoverApp
+    if "%internal%" == "0" (
+        call :ImportColor
+        set VERSION_SPCES_FILE=%TEMP%\spces-list.ver.txt
+        set MATCH_SPCES_FILE=%TEMP%\spces-match.ver.txt
+        call :DiscoverApp
+    )
+    copy /y NUL "%MATCH_SPCES_FILE%" >NUL
+    call :MatchVersion --output-format cmd --all --spec-match "%REQUEST_SPEC%"^\n^
+                   --specs-file "%VERSION_SPCES_FILE%" --output "%MATCH_SPCES_FILE%"
     call :IterMatchVersion "" 1
-
     set "SWITCH_NAME=%MATCH_APP%=%AppInfoVersion%"
     set SwitchSuccess=0
+
     if not "%AppPath%" == "" (
         echo.@call "%AppPath%\set-env.cmd" --set>> "%POST_SCIRPT%"
         call :PrintMsg normal switch enable "%BW%!MATCH_APP!%NN%=!AppInfoVersion!" at %AppPath%
@@ -128,11 +138,10 @@
 ::: function DiscoverApp()
     copy /y NUL "%VERSION_SPCES_FILE%" >NUL
     copy /y NUL "%MATCH_SPCES_FILE%" >NUL
-
-    for /D %%i in (%GLOBAL_DIR%\*) do if exist "%%i\set-env.cmd" (
+    for /D %%i in (%BRICKV_GLOBAL_DIR%\*) do if exist "%%i\set-env.cmd" (
         call :RecordApp "%%i" global --spec-file "%VERSION_SPCES_FILE%"
     )
-    for /D %%i in (%LOCAL_DIR%\*) do if exist "%%i\set-env.cmd" (
+    for /D %%i in (%BRICKV_LOCAL_DIR%\*) do if exist "%%i\set-env.cmd" (
         call :RecordApp "%%i" local --spec-file "%VERSION_SPCES_FILE%"
     )
     call :MatchVersion --output-format cmd --all --spec-match "%REQUEST_SPEC%"^\n^
@@ -193,6 +202,22 @@ goto :eof
                                     $%Activate%,%Location%,%TARGET%,%VA_INFO_VERSION%>> "%Spec_File%"
 ::: endfunc
 
+
+
+rem :RecordAppFast
+rem rem TODO: use RecordApp, that is Ok
+rem set TARGET=%~1
+rem set Location=%~2
+rem for /f %%i in ("%TARGET%") do set Filename=%%~nxi
+rem if "%Filename:~0,10%" == "backupfor-" goto :eof
+rem if "%Filename:~0,7%" == "failed-" goto :eof
+rem call "%TARGET%\set-env.cmd" --info
+rem call set _VA_BASE=%%VA_%VA_INFO_APPNAME%_BASE%%
+rem set Activate=0
+rem if "%_VA_BASE%" == "%TARGET%" set Activate=1
+rem echo.%VA_INFO_APPNAME%=%VA_INFO_VERSION%^\n^
+rem      $%Activate%,%Location%,%TARGET%,%VA_INFO_VERSION%>> "%VERSION_SPCES_FILE%"
+rem goto :eof
 
 #include("brickv_prepare.cmd")
 #include("brickv_CMD_list.cmd")

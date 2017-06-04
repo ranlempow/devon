@@ -5,7 +5,7 @@ import sys
 import unittest
 import shutil
 
-from .utils import ScriptTestCase
+from .utils import ScriptTestCase, Removed
 
 class Test(ScriptTestCase):
     target = 'CMD_setup.cmd'

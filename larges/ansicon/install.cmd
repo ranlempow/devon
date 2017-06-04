@@ -26,7 +26,7 @@ rem "browser_download_url": "https://github.com/adoxa/ansicon/releases/download/
 
 :ansicon_prepare
 	set APPVER=%MATCH_VER%
-    if "%REQUEST_ARCH%" == "any" set REQUEST_ARCH=x64
+    if "%REQUEST_ARCH%" == "." set REQUEST_ARCH=x64
 
 	if "%REQUEST_NAME%" == "" set REQUEST_NAME=ansicon-%APPVER%-%REQUEST_ARCH%
 	set DOWNLOAD_URL=%MATCH_CARRY%

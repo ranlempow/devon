@@ -1,3 +1,11 @@
+
+rem set str=a:1;b:2 c:3
+rem :FORLOOP
+rem @For /F "tokens=1* delims=;" %%A IN ("%str%") DO @set "item=%%A" & set "str=%%B"
+rem @For /F "tokens=1* delims=:" %%A IN ("%item%") DO @set "key=%%A" & set "value=%%B"
+rem @echo %key%,%value%
+rem @if not "%str%" == "" goto FORLOOP
+
 @rem usage:
 @rem (set Text=%inival%)&(set LoopCb=:getstring)&(set ExitCb=:exit_getstring)&(set Spliter=;)
 @rem goto :SubString
@@ -9,7 +17,7 @@
 
 :SubString
     @REM Stop when the string is empty
-    @if "%Text%" EQU "" goto :ENDSubString
+    @if "%Text%" == "" goto :ENDSubString
     @for /F "delims=;" %%A in ("!Text!") do @set substring=%%A
     @call goto %LoopCb%
     @if not "%LoopBreak%" == "" goto :ENDSubString
@@ -32,3 +40,4 @@
 @set LoopCb=
 @(set ExitCb=)& call goto %ExitCb%
 @goto :eof
+

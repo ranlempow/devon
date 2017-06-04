@@ -5,35 +5,32 @@
 @rem protective execute
 @rem if the execution is interrupted or exited, it run POST_SCIRPT to clean up
 @rem POST_SCIRPT is also use to return variable to environment
+@rem warning: POST_SCIRPT will not ran, if exit by ctrl+c, ctrl+break.
+@rem          anwser 'yes' to first prompt, anwser 'no' to second,
+@rem          then POST_SCIRPT may be ran.
 
-@if not "%~1" == "_start_" (
-    set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
-    set POST_ERRORLEVEL=0
-)
-@if not "%~1" == "_start_" (
-    copy /y NUL "%POST_SCIRPT%" >NUL
-    cmd /c "%~f0 _start_ %*"
-)
-@if not "%~1" == "_start_" (
-    call "%POST_SCIRPT%"
-    del "%POST_SCIRPT%"
-)
-@if not "%~1" == "_start_" if "%POST_ERRORLEVEL%" == "" set POST_ERRORLEVEL=0
-@if not "%~1" == "_start_" (
-    set POST_SCIRPT=
-    set POST_ERRORLEVEL=
-    set SCRIPT_FOLDER=
-    set SCRIPT_SOURCE=
-    exit /b %POST_ERRORLEVEL%
-    goto :eof
-)
+@if "%~1" == "_start_" goto :NOPROTECT
+@set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%%TIME:~-2%.cmd
+@set POST_ERRORLEVEL=0
+@copy /y NUL "%POST_SCIRPT%" >NUL
+@cmd /d /c "%~f0" _start_ %*
+@call "%POST_SCIRPT%"
+@del "%POST_SCIRPT%"
+@if "%POST_ERRORLEVEL%" == "" set POST_ERRORLEVEL=0
+@set POST_SCIRPT=
+@set SCRIPT_FOLDER=
+@set SCRIPT_SOURCE=
+@exit /b %POST_ERRORLEVEL% & (set POST_ERRORLEVEL= )
+@goto :eof
 
+
+:NOPROTECT
 @ncall :Main %*
 @goto :eof
 
 :EnterPostScript
 set _OLD_POST_SCIRPT=%POST_SCIRPT%
-set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%.cmd
+set POST_SCIRPT=%TEMP%\devon_post_script-%RANDOM%%TIME:~-2%.cmd
 set POST_ERRORLEVEL=0
 copy /y NUL "%POST_SCIRPT%" >NUL
 goto :eof
@@ -81,15 +78,29 @@ call :CMD_%_devcmd% %_devargs%
 ::: endfunc
 
 
+::: function AddPathUnique(entry)
+set found=0
+set str=%PATH%
+:AddPathUnique_IterStringLoop
+For /F "tokens=1* delims=;" %%A IN ("%str%") DO @set "item=%%A" & set "str=%%B"
+if "%entry%" == "%item%" set found=1
+if not "%str%" == "" goto AddPathUnique_IterStringLoop
+if "%found%" == "0" set PATH=%entry%;%PATH%
+return %PATH%
+::: endfunc
+
+
+
 :ActiveDevShell
+
 rem switch to dev-sh environment, if not in dev-sh
+
 if "%DEVSH_ACTIVATE%" == "%SCRIPT_SOURCE%" goto :eof
 
 call :BasicCheck
 call :LoadConfigPaths
 call :GetTitle %PRJ_ROOT%
-rem start set PATH
-rem set PATH=C:\__dev_setpath;%PATH%
+
 
 rem add PRJ_BIN, PRJ_TOOLS to path
 if exist "%PRJ_BIN%" set PATH=%PRJ_BIN%;%PATH%
@@ -97,9 +108,23 @@ if exist "%PRJ_TOOLS%" set PATH=%PRJ_TOOLS%;%PATH%
 if exist "%PRJ_CONF%" set PATH=%PRJ_CONF%;%PATH%
 
 rem add paths from config[path]
-call :GetIniArray %DEVON_CONFIG_PATH% "path"
-call set inival=%inival%
-set PATH=%inival%;%PATH%
+rem TODO: check empty args in function header
+if not "%DEVON_CONFIG_PATH%" == "" call :GetIniArray "%DEVON_CONFIG_PATH%" "path"
+call set str=%inival%
+:ActiveDevShell_path_IterStringLoop
+for /f "tokens=1* delims=;" %%A in ("%str%") do set "item=%%A" & set "str=%%B"
+    set PATH=%item%;%PATH%
+    if not "%str%" == "" goto ActiveDevShell_path_IterStringLoop
+
+
+rem add environ variable from config[variable]
+if not "%DEVON_CONFIG_PATH%" == "" call :GetIniArray "%DEVON_CONFIG_PATH%" "variable"
+set str=%inival%
+:ActiveDevShell_variable_IterStringLoop
+for /f "tokens=1* delims=;" %%A in ("%str%") do set "item=%%A" & set "str=%%B"
+for /f "tokens=1* delims==" %%A in ("%item%") do set "name=%%A" & set "value=%%B"
+    call set "%name%=%value%"
+    if not "%str%" == "" goto ActiveDevShell_variable_IterStringLoop
 
 
 rem prepare temporary command stub folder
@@ -109,37 +134,39 @@ md "%PRJ_TMP%\command-pre" 1>nul 2>&1
 
 rem set-env
 set inival=
-call :GetIniArray %DEVON_CONFIG_PATH% "dotfiles"
-(set Text=!inival!)&(set LoopCb=:call_dotfile)&(set ExitCb=:exit_call_dotfile)&(set Spliter=;)
-goto :SubString
-:call_dotfile
+if not "%DEVON_CONFIG_PATH%" == "" call :GetIniArray %DEVON_CONFIG_PATH% "dotfiles"
+set str=%inival%
+:ActiveDevShell_dotfiles_IterStringLoop
+for /f "tokens=1* delims=;" %%A in ("%str%") do set "item=%%A" & set "str=%%B"
     pushd "%PRJ_ROOT%"
-    if exist "!substring!.cmd" call call "!substring!.cmd"
+    if exist "!item!.cmd" call call "!item!.cmd"
     popd
-    goto :NextSubString
-:exit_call_dotfile
-set inival=
+    if not "%str%" == "" goto ActiveDevShell_dotfiles_IterStringLoop
+
 
 call :GenerateCommandStubs
 
-call :GetIniPairs %DEVON_CONFIG_PATH% "require"
+if not "%DEVON_CONFIG_PATH%" == "" call :GetIniPairs %DEVON_CONFIG_PATH% "require"
 if not "%inival%" == "" set specs=%inival:;= %
 
 call :EnterPostScript
-rem TODO: reconsider remove APPS_GLOBAL_DIR
-if "%APPS_GLOBAL_DIR%" == ""set APPS_GLOBAL_DIR=%LOCALAPPDATA%\Programs
-call :brickv_CMD_Update "%specs%" --no-install --vvv
+if "%BRICKV_GLOBAL_DIR%" == ""set BRICKV_GLOBAL_DIR=%LOCALAPPDATA%\Programs
+if "%BRICKV_LOCAL_DIR%" == "" set BRICKV_LOCAL_DIR=%PRJ_BIN%
+
+call :brickv_CMD_Update "%specs% ansicon clink" --no-install
 call :ExecutePostScript
 
-if exist "%PRJ_CONF%\hooks\set-env.cmd" (
-    call "%PRJ_CONF%\hooks\set-env.cmd"
-)
+rem if exist "%PRJ_CONF%\hooks\set-env.cmd" (
+rem     call "%PRJ_CONF%\hooks\set-env.cmd"
+rem )
 
 set PATH=%PRJ_TMP%\command;%PATH%
-rem end set PATH
-rem set PATH=C:\__dev_endpath;%PATH%
 rmdir /S /Q "%PRJ_TMP%\command" 1>nul 2>&1
 move "%PRJ_TMP%\command-pre" "%PRJ_TMP%\command" 1>nul 2>&1
+
+rem TODO: check more
+set inival=
+set str=
 
 set DEVSH_ACTIVATE=%SCRIPT_SOURCE%
 goto :eof
@@ -164,37 +191,36 @@ goto :eof
 
 ::: function GenerateCommandStubs()
     rem create temporary command stub
-    call :GetIniPairs %DEVON_CONFIG_PATH% "alias"
-    (set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
-    goto :SubString
-    :create_alias_file
-        echo !substring!
-        for /f "tokens=1,2 delims==" %%a in ("!substring!") do (
-            set alias=%%a
-            set alias_cmd=%%b
-        )
+
+    if not "%DEVON_CONFIG_PATH%" == "" call :GetIniPairs "%DEVON_CONFIG_PATH%" "alias"
+    set str=%inival%
+    :GenerateCommandStubs_IterStringLoop
+    for /f "tokens=1* delims=;" %%A in ("%str%") do set "item=%%A" & set "str=%%B"
+    for /f "tokens=1* delims==" %%A in ("%item%") do set "alias=%%A" & set "alias_cmd=%%B"
         echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command-pre\%alias%.cmd
-        goto :NextSubString
-    :exit_create_alias_file
-    set inival=
+        if not "%str%" == "" goto GenerateCommandStubs_IterStringLoop
+
+    rem (set Text=!inival!)&(set LoopCb=:create_alias_file)&(set ExitCb=:exit_create_alias_file)&(set Spliter=;)
+    rem goto :SubString
+    rem :create_alias_file
+    rem     echo !substring!
+    rem     for /f "tokens=1,2 delims==" %%a in ("!substring!") do (
+    rem         set alias=%%a
+    rem         set alias_cmd=%%b
+    rem     )
+    rem     echo.cmd.exe /C "%alias_cmd%" > %PRJ_TMP%\command-pre\%alias%.cmd
+    rem     goto :NextSubString
+    rem :exit_create_alias_file
+    rem set inival=
 
     echo.@"%SCRIPT_SOURCE%" %%* > %PRJ_TMP%\command-pre\dev.cmd
 
     #include(GitHooksScript, "git-hooks")
     echo.!GitHooksScript! > %PRJ_TMP%\command-pre\git-hooks
 
-    rem #include(SSHScript, "ssh")
-    rem echo.!SSHScript! > %PRJ_TMP%\command\ssh
-    rem echo.!SSHScript! > %PRJ_TMP%\command\scp
-
     #include(GitBashScript, "bash.cmd")
     echo.!GitBashScript! > %PRJ_TMP%\command-pre\bash.cmd
     echo.!GitBashScript! > %PRJ_TMP%\command-pre\git-bash.cmd
-    rem echo.@bash -c ssh %* > %PRJ_TMP%\command\ssh.cmd
-    rem echo.@bash -c scp %* > %PRJ_TMP%\command\scp.cmd
-
-    rem #include(BashProfileScript, "bash_profile")
-    rem echo.!BashProfileScript! > %HOMEPATH%\.bashrc
 
 ::: endfunc
 
@@ -209,18 +235,15 @@ goto :eof
         (set SCRIPT_FOLDER=)^&^\n^
         (set SCRIPT_SOURCE=)^&^\n^
         (set DEVON_VERSION=)^&^\n^
+        (set CTRA=)^&^\n^
         (set _devcmd=)^&^\n^
         (set _devargs=)^&
 
     rem force setup for newly cloned project
     rem set CMDSCRIPT=!CMDSCRIPT!(dev setup)^&
 
-    call :EnterPostScript
-    call :brickv_CMD_Update "ansicon clink" --no-install --vvv
-    call :ExecutePostScript
 
     rem ansicon feature
-    echo %VA_ANSICON_BASE%
     where ansicon.exe 1>nul 2>&1
     if not errorlevel 1 (
         set "CMDSCRIPT=!CMDSCRIPT!(ansicon.exe -p)^&"

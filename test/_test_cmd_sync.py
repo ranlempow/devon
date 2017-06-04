@@ -10,7 +10,7 @@ import subprocess
 from os.path import join
 from subprocess import check_call
 
-from .utils import ScriptTestCase
+from .utils import ScriptTestCase, Removed
 
 
 class Test(ScriptTestCase):

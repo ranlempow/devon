@@ -1,0 +1,7 @@
+*           text=auto
+docs/*.txt  text point
+*.vcproj    text eol=crlf
+*.cmd       text eol=crlf
+*.vbs       text eol=crlf
+*.sh        text eol=lf
+*.jpg       -text point=sig-md5sum

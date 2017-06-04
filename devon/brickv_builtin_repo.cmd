@@ -1,0 +1,7 @@
+#include("..\larges\gradle\install-global-new2.cmd")
+#include("..\larges\git\install-2.cmd")
+#include("..\larges\clink\install.cmd")
+#include("..\larges\ansicon\install.cmd")
+#include("..\larges\nodejs\install.cmd")
+#include("..\larges\python\install.cmd")
+#include("..\larges\choco\install.cmd")

@@ -2,10 +2,42 @@
 
 
 ::: function brickv_CMD_install(ONLY_VERSIONS=N, args=....) delayedexpansion
+:: function brickv_CMD_install(spec, reinstall=N, dry=N, no_check=N, newest=N, targetdir=?)
 
 set ACCEPT=1
 
-call :BrickvPrepare %args%
+@rem 安裝的父目錄所在地
+@rem 這個會複寫localdir, globaldir的設定
+set REQUEST_TARGETDIR=%targetdir%
+
+@rem 不真正下載與執行, 只顯示相關參數
+if "%dry%" == "1" set DRYRUN=1
+
+@rem 強迫重新下載與安裝
+if "%reinstall%" == "1" set REINSTALL=1
+
+call :BrickvPrepare "%spec%" %args%
+
+call :MatchVersion --output-format env "%spec%"
+set REQUEST_APP=%MATCH_APP%
+set REQUEST_MAJOR=%MATCH_MAJOR%
+set REQUEST_MINOR=%MATCH_MINOR%
+set REQUEST_PATCH=%MATCH_PATCH%
+set REQUEST_ARCH=%MATCH_ARCH%
+set REQUEST_PATCHES=%MATCH_PATCHES%
+set REQUEST_VER=%MATCH_VER%
+rem set REQUEST_SPEC=%REQUEST_APP%=%REQUEST_VER%@%REQUEST_ARCH%[%REQUEST_PATCHES%]
+if "%REQUEST_ARCH%" == "" (
+    if "%PROCESSOR_ARCHITECTURE%" == "x86" (
+        set REQUEST_ARCH=x86
+    ) else (
+        set REQUEST_ARCH=x64
+    )
+)
+call :PrintVersion info request "%REQUEST_APP%" "%REQUEST_VER%" "%REQUEST_ARCH%" "%REQUEST_PATCHES%"
+
+
+
 set args=
 set APPNAME=%REQUEST_APP%
 
@@ -16,6 +48,7 @@ if "%LabelExists%" == "1" (
 ) else (
     error("%APPNAME% not in installable list")
 )
+@rem TODO: x
 if "%ALLOW_EMPTY_LOCATION%" == "1" if "%REQUEST_LOCATION%" == "" set REQUEST_LOCATION=global
 
 
@@ -25,7 +58,7 @@ rem if "%LabelExists%" == 1 call :%APPNAME%_detect
 
 rem versions
 if not "%PRJ_TMP%" == "" set TEMP=%PRJ_TMP%
-set VERSION_SOURCE_FILE=%TEMP%\source_%APPNAME%.ver.txt
+set VERSION_SOURCE_FILE=%TEMP%\source-%APPNAME%.ver.txt
 set VERSION_SPCES_FILE=%TEMP%\spces-%APPNAME%.ver.txt
 
 if exist "%VERSION_SOURCE_FILE%" del "%VERSION_SOURCE_FILE%" >nul
@@ -89,18 +122,24 @@ if not "%INSTALLER%" == "" (
 
 
 rem validate
-set ValidateFailed=0
+set NoCheckTarget=0
+rem set ValidateFailed=0
 call :ExistsLabel %APPNAME%_validate
 if "%LabelExists%" == "1" call :%APPNAME%_validate
-if "%ValidateFailed%" == "1" (
-    set ERROR_MSG="extra validate failed"
-    goto :brickv_CMD_install_Error
+rem if "%ValidateFailed%" == "1" (
+rem     set ERROR_MSG="extra validate failed"
+rem     goto :brickv_CMD_install_Error
+rem )
+
+if "%NoCheckTarget%" == "0" (
+    if not exist "%TARGET%" error("unpack failed, cannot unpack installer")
 )
-pcall :BrickvGenEnv "%TARGET%" "%SETENV%"
+pcall :BrickvGenEnv "%TARGET%" "%APPNAME%" "%APPVER%" "%SETENV%"
         if not "%ERROR_MSG%" == "" goto :brickv_CMD_install_Error
 pcall :BrickvValidate
 if not "%ERROR_MSG%" == "" (
-    call :PrintMsg warning warning validate error: %ERROR_MSG%
+    call :PrintMsg error validate failed: %ERROR_MSG%
+    goto :brickv_CMD_install_Error
 ) else (
     call :PrintMsg noraml validate succeed
 )
@@ -119,11 +158,14 @@ cmd /C exit /b 1
 ::: endfunc
 
 
-::: function BrickvValidate() delayedexpansion
+::: function BrickvValidate2() delayedexpansion
     rem set CHECK_EXIST=
+    rem set CHECK_EXEC=gradle
+    rem set CHECK_EXEC_ARGS=
     rem set CHECK_CMD=gradle -v
     rem set CHECK_LINEWORD=Gradle
     rem set CHECK_OK=Gradle %VA_INFO_VERSION%
+
     if exist "%TARGET%\set-env.cmd" (
         call "%TARGET%\set-env.cmd" --validate --quiet
     ) else (
@@ -133,6 +175,14 @@ cmd /C exit /b 1
 
     if not "%CHECK_EXIST%" == "" if not exist "%SCRIPT_FOLDER%\%CHECK_EXIST%" (
         error("exist validate failed %SCRIPT_FOLDER%\%CHECK_EXIST%")
+    )
+    if not "%CHECK_EXEC%" == "" (
+        if not exist "%SCRIPT_FOLDER%\%CHECK_EXEC%" (
+            error("validate failed, because %SCRIPT_FOLDER%\%CHECK_EXIST% not exist")
+        ) else (
+            "%SCRIPT_FOLDER%\%CHECK_EXEC%" %CHECK_EXEC_ARGS%
+            if errorlevel 1 error("execute validate failed")
+        )
     )
     if "%CHECK_LINEWORD%" == "" if "%CHECK_OK%" == "" (
         if "%CHECK_CMD%" == "" (
@@ -157,6 +207,24 @@ cmd /C exit /b 1
 ::: endfunc
 
 
+::: function BrickvValidate() delayedexpansion
+    if exist "%TARGET%\set-env.cmd" (
+        call "%TARGET%\set-env.cmd" --validate --quiet
+    ) else (
+        error("missing %TARGET%\set-env.cmd")
+    )
+    if errorlevel 1 (
+        if defined VALID_ERR (
+            error(%VALID_ERR%)
+        ) else (
+            error("validation failed, but reason is not given")
+        )
+    )
+::: endfunc
+
+
+
+
 :ExistsLabel
 set LabelExists=1
 findstr /i /r /c:"^[ ]*:%~1\>" "%SCRIPT_SOURCE%" >nul 2>nul
@@ -168,8 +236,10 @@ goto :eof
 #include("brickv_genenv.cmd")
 #include("brickv_download.cmd")
 
-
 #include("..\larges\gradle\install-global-new2.cmd")
 #include("..\larges\git\install-2.cmd")
 #include("..\larges\clink\install.cmd")
 #include("..\larges\ansicon\install.cmd")
+#include("..\larges\nodejs\install.cmd")
+#include("..\larges\python\install.cmd")
+#include("..\larges\choco\install.cmd")
